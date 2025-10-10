@@ -82,7 +82,7 @@ Planned educational modules:
 
 ## Roadmap
 
-* [-] ASCII renderer with brightness-based mapping
+* [x] ASCII renderer with brightness-based mapping
 * [ ] Colorized terminal support
 * [ ] Kernel-based filtering
 * [ ] FFT-based visualization
