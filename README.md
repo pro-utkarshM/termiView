@@ -36,8 +36,7 @@ sudo make install
 ### Dependencies
 
 * GCC / Clang
-* libpng, libjpeg (for image loading)
-* ncurses (for terminal control)
+* stb_image.h (for image loading)
 * FFTW (for Fourier transforms) *(optional, for advanced features)*
 
 ---
@@ -103,5 +102,3 @@ git push origin feature/your-feature
 ```
 
 ---
-
-**Made with ❤️ and `printf()` by [Utkarsh Maurya](https://github.com/pro-utkarshM).**

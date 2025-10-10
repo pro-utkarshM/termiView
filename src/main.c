@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
     // Parse arguments
     if (argc == 1) {
         printf(
-            "Usage: %s [path/to/image] [max width (default %d)] [max height (default %d)] [dark mode (y/n, default=y)]\n",
+            "Usage: %s [path/to/image] [max width (default: %d)] [max height (default: %d)] [dark mode (y/n, default: y)]\n",
             argv[0], DEFAULT_MAX_WIDTH, DEFAULT_MAX_HEIGHT
         );
         return 1;
