@@ -1,0 +1,29 @@
+# Build artifacts
+*.o
+termiView
+termiView-debug
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Debug files
+*.dSYM/
+vgcore.*
+core
+
+# Output files
+*.txt
+output/
+
+# Compiled libraries
+*.so
+*.a
+*.dylib
