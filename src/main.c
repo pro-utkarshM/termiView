@@ -27,10 +27,21 @@ int main(int argc, char* argv[]) {
 
     // Load image
     grayscale_image_t original = load_image_as_grayscale(file_path);
+    if (original.data == NULL) {
+        return 1;
+    }
 
     grayscale_image_t resized = make_resized_grayscale(&original, max_width, max_height);
+    if (resized.data == NULL) {
+        free_grayscale_image(&original);
+        return 1;
+    }
     
     print_image(&resized, dark_mode);
+
+    // Cleanup
+    free_grayscale_image(&original);
+    free_grayscale_image(&resized);
 
     return 0;
 }

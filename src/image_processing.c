@@ -2,6 +2,8 @@
 #include "../include/stb_image.h"
 #include "../include/image_processing.h"
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define LEVEL_CHARS " .-=+*x#$&X@"
 #define N_LEVELS 12
@@ -10,6 +12,11 @@
 grayscale_image_t load_image_as_grayscale(const char* file_path) {
     int width, height, _;
     unsigned char* data = stbi_load(file_path, &width, &height, &_, 1);
+
+    if (data == NULL) {
+        fprintf(stderr, "Error: Failed to load image '%s': %s\n", file_path, stbi_failure_reason());
+        return (grayscale_image_t) { .width = 0, .height = 0, .data = NULL };
+    }
 
     return (grayscale_image_t) {
         .width = (size_t) width,
@@ -45,7 +52,11 @@ grayscale_image_t make_resized_grayscale(grayscale_image_t* original, size_t max
         height = max_height;
     }
 
-    unsigned char* data = calloc(width * height, sizeof(data));
+    unsigned char* data = calloc(width * height, sizeof(unsigned char));
+    if (data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for resized image\n");
+        return (grayscale_image_t) { .width = 0, .height = 0, .data = NULL };
+    }
 
     for (size_t i = 0; i < width; i++) {
         size_t x1 = (i * original->width) / (width);
@@ -74,5 +85,14 @@ void print_image(grayscale_image_t* image, bool dark_mode) {
             putchar(LEVEL_CHARS[level]);
         }
         printf("\n");
+    }
+}
+
+void free_grayscale_image(grayscale_image_t* image) {
+    if (image != NULL && image->data != NULL) {
+        stbi_image_free(image->data);
+        image->data = NULL;
+        image->width = 0;
+        image->height = 0;
     }
 }
