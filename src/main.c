@@ -5,8 +5,9 @@
 #include <getopt.h>
 #include "../include/image_processing.h"
 #include "../include/color_output.h"
+#include "../include/filters.h"
 
-#define VERSION "0.2.0"
+#define VERSION "0.3.0"
 #define DEFAULT_MAX_WIDTH 64
 #define DEFAULT_MAX_HEIGHT 48
 
@@ -20,13 +21,16 @@ void print_usage(const char* program_name) {
     printf("  -d, --dark             Use dark mode (default)\n");
     printf("  -l, --light            Use light mode\n");
     printf("  -o, --output <file>    Save output to file instead of stdout\n");
+    printf("  -f, --filter <type>    Apply filter: blur, sharpen, sobel, laplacian (default: none)\n");
     printf("  -v, --version          Show version information\n");
     printf("  --help                 Show this help message\n\n");
     printf("Examples:\n");
     printf("  %s image.jpg\n", program_name);
     printf("  %s -w 80 -h 60 --color 256 image.png\n", program_name);
     printf("  %s --light --color 16 photo.jpeg\n", program_name);
-    printf("  %s -c truecolor -o output.txt image.jpg\n\n", program_name);
+    printf("  %s -c truecolor -o output.txt image.jpg\n", program_name);
+    printf("  %s --filter blur image.jpg\n", program_name);
+    printf("  %s -f sharpen --color 256 image.png\n\n", program_name);
 }
 
 void print_version() {
@@ -57,6 +61,7 @@ int main(int argc, char* argv[]) {
     color_mode_t color_mode = COLOR_MODE_TRUECOLOR;
     char* output_file = NULL;
     char* input_file = NULL;
+    filter_type_t filter_type = FILTER_NONE;
 
     // Long options
     static struct option long_options[] = {
@@ -66,6 +71,7 @@ int main(int argc, char* argv[]) {
         {"dark",    no_argument,       0, 'd'},
         {"light",   no_argument,       0, 'l'},
         {"output",  required_argument, 0, 'o'},
+        {"filter",  required_argument, 0, 'f'},
         {"version", no_argument,       0, 'v'},
         {"help",    no_argument,       0,  0 },
         {0, 0, 0, 0}
@@ -74,7 +80,7 @@ int main(int argc, char* argv[]) {
     // Parse options
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "w:h:c:dlo:v", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "w:h:c:dlo:f:v", long_options, &option_index)) != -1) {
         switch (opt) {
             case 0:
                 // Long option with no short equivalent
@@ -108,6 +114,9 @@ int main(int argc, char* argv[]) {
                 break;
             case 'o':
                 output_file = optarg;
+                break;
+            case 'f':
+                filter_type = parse_filter_type(optarg);
                 break;
             case 'v':
                 print_version();
@@ -155,10 +164,43 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
+        // Apply filter if specified
+        grayscale_image_t filtered = {0};
+        grayscale_image_t* to_resize = &gray_original;
+        
+        if (filter_type != FILTER_NONE) {
+            kernel_t kernel = {0};
+            switch (filter_type) {
+                case FILTER_BLUR:
+                    kernel = create_gaussian_blur_kernel(5, 1.0f);
+                    break;
+                case FILTER_SHARPEN:
+                    kernel = create_sharpen_kernel();
+                    break;
+                case FILTER_EDGE_SOBEL:
+                    kernel = create_sobel_x_kernel();
+                    break;
+                case FILTER_EDGE_LAPLACIAN:
+                    kernel = create_laplacian_kernel();
+                    break;
+                default:
+                    break;
+            }
+            
+            if (kernel.data != NULL) {
+                filtered = apply_convolution_grayscale(&gray_original, &kernel);
+                free_kernel(&kernel);
+                if (filtered.data != NULL) {
+                    to_resize = &filtered;
+                }
+            }
+        }
+
         // Process grayscale image
-        grayscale_image_t resized = make_resized_grayscale(&gray_original, max_width, max_height);
+        grayscale_image_t resized = make_resized_grayscale(to_resize, max_width, max_height);
         if (resized.data == NULL) {
             free_grayscale_image(&gray_original);
+            if (filtered.data != NULL) free_grayscale_image(&filtered);
             if (output_file != NULL) {
                 fclose(stdout);
                 stdout = original_stdout;
@@ -175,12 +217,46 @@ int main(int argc, char* argv[]) {
 
         // Cleanup
         free_grayscale_image(&gray_original);
+        if (filtered.data != NULL) free_grayscale_image(&filtered);
         free_grayscale_image(&resized);
     } else {
+        // Apply filter if specified
+        rgb_image_t filtered_rgb = {0};
+        rgb_image_t* to_resize_rgb = &rgb_original;
+        
+        if (filter_type != FILTER_NONE) {
+            kernel_t kernel = {0};
+            switch (filter_type) {
+                case FILTER_BLUR:
+                    kernel = create_gaussian_blur_kernel(5, 1.0f);
+                    break;
+                case FILTER_SHARPEN:
+                    kernel = create_sharpen_kernel();
+                    break;
+                case FILTER_EDGE_SOBEL:
+                    kernel = create_sobel_x_kernel();
+                    break;
+                case FILTER_EDGE_LAPLACIAN:
+                    kernel = create_laplacian_kernel();
+                    break;
+                default:
+                    break;
+            }
+            
+            if (kernel.data != NULL) {
+                filtered_rgb = apply_convolution_rgb(&rgb_original, &kernel);
+                free_kernel(&kernel);
+                if (filtered_rgb.r_data != NULL) {
+                    to_resize_rgb = &filtered_rgb;
+                }
+            }
+        }
+
         // Process RGB image
-        rgb_image_t resized = make_resized_rgb(&rgb_original, max_width, max_height);
+        rgb_image_t resized = make_resized_rgb(to_resize_rgb, max_width, max_height);
         if (resized.r_data == NULL) {
             free_rgb_image(&rgb_original);
+            if (filtered_rgb.r_data != NULL) free_rgb_image(&filtered_rgb);
             if (output_file != NULL) {
                 fclose(stdout);
                 stdout = original_stdout;
@@ -200,6 +276,7 @@ int main(int argc, char* argv[]) {
 
         // Cleanup
         free_rgb_image(&rgb_original);
+        if (filtered_rgb.r_data != NULL) free_rgb_image(&filtered_rgb);
         free_rgb_image(&resized);
     }
 
