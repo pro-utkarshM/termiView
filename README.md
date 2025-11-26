@@ -14,8 +14,9 @@ Originally designed to render **colorized ASCII art**, TermiView is evolving int
 
 ## Features
 
-### ✅ Implemented (Phase 1 Complete)
+### ✅ Implemented
 
+#### Phase 1: Foundation & Color (Complete)
 - **ASCII Renderer** – Convert images into ASCII art with adjustable resolution
 - **Colorized Output** – Full color support with multiple modes:
   - **None** – Classic grayscale ASCII
@@ -29,11 +30,30 @@ Originally designed to render **colorized ASCII art**, TermiView is evolving int
 - **Error Handling** – Comprehensive error checking and memory management
 - **Build System** – Complete Makefile with install/uninstall targets
 
+#### Phase 2: Image Filtering (In Progress)
+- **Kernel-Based Convolution** – Apply convolution operations to images
+- **Gaussian Blur Filter** – Smooth images with configurable kernel size and sigma
+- **Sharpen Filter** – Enhance edges and details in images
+- **Sobel Edge Detection** – Detect horizontal edges using Sobel operator
+- **Laplacian Edge Detection** – Omnidirectional edge detection
+- **Filter Integration** – Seamlessly apply filters before ASCII conversion
+
 ### 🚧 Planned (Future Phases)
 
-- **Image Filters** – Apply kernels like blur, sharpen, or edge-detection (Sobel, Laplacian, etc.)
+#### Phase 3: Advanced Filters
+- **Additional Edge Detectors** – Prewitt, Canny, and other edge detection algorithms
+- **Morphological Operations** – Erosion, dilation, opening, closing
+- **Custom Kernel Support** – Load custom convolution kernels from files
+
+#### Phase 4: Frequency Domain
 - **Frequency Analysis** – View Fourier transform magnitude & phase as ASCII plots
+- **FFT-based Filtering** – Apply filters in frequency domain
+
+#### Phase 5: Visualization & Analysis
 - **Histogram Visualization** – Display intensity or color histograms right in the terminal
+- **Histogram Equalization** – Enhance image contrast
+
+#### Phase 6: Real-time & Extensibility
 - **Animation Support** – Step through filter applications frame by frame
 - **Real-time Video** – Process camera/video input in real-time
 - **Plugin System** – Extensible architecture for custom filters
@@ -81,6 +101,7 @@ Options:
   -d, --dark             Use dark mode (default)
   -l, --light            Use light mode
   -o, --output <file>    Save output to file instead of stdout
+  -f, --filter <type>    Apply filter: blur, sharpen, sobel, laplacian (default: none)
   -v, --version          Show version information
   --help                 Show this help message
 ```
@@ -110,6 +131,26 @@ termiView -c truecolor -o output.txt image.jpg
 **Classic grayscale ASCII:**
 ```bash
 termiView --color none image.png
+```
+
+**Apply Gaussian blur filter:**
+```bash
+termiView --filter blur image.jpg
+```
+
+**Sharpen image before ASCII conversion:**
+```bash
+termiView -f sharpen --color 256 photo.png
+```
+
+**Edge detection with Sobel operator:**
+```bash
+termiView --filter sobel image.jpg -w 80 -h 60
+```
+
+**Laplacian edge detection in grayscale:**
+```bash
+termiView -f laplacian --color none image.png
 ```
 
 ---
@@ -149,10 +190,12 @@ termiView/
 │   └── kitty.jpeg
 ├── include/                    # Header files
 │   ├── color_output.h          # Color rendering functions
+│   ├── filters.h               # Filter and convolution functions
 │   ├── image_processing.h      # Image processing functions
 │   └── stb_image.h             # Image loading library
 └── src/                        # Source code
     ├── color_output.c          # ANSI color implementation
+    ├── filters.c               # Convolution and filter implementation
     ├── image_processing.c      # Image processing implementation
     └── main.c                  # CLI and main logic
 ```
@@ -181,7 +224,9 @@ Planned educational modules:
 * [x] Professional CLI with getopt
 * [x] Error handling and memory management
 * [x] Build system with install/uninstall
-* [ ] Kernel-based filtering
+* [x] Kernel-based filtering (blur, sharpen, edge detection)
+* [x] Convolution engine for image processing
+* [ ] Additional edge detection algorithms
 * [ ] FFT-based visualization
 * [ ] Histogram visualization
 * [ ] Real-time video / camera input support
@@ -191,7 +236,16 @@ Planned educational modules:
 
 ## Version History
 
-### v0.2.0 - Phase 1 Complete (Current)
+### v0.3.0 - Phase 2: Image Filtering (Current)
+- ✅ Kernel-based convolution engine for grayscale and RGB images
+- ✅ Gaussian blur filter with configurable parameters
+- ✅ Sharpen filter for edge enhancement
+- ✅ Sobel edge detection (horizontal)
+- ✅ Laplacian edge detection (omnidirectional)
+- ✅ Filter CLI option (`--filter` / `-f`)
+- ✅ Seamless integration with existing color modes
+
+### v0.2.0 - Phase 1: Foundation & Color
 - ✅ Full colorized output support (16, 256, truecolor)
 - ✅ RGB image processing with separate channels
 - ✅ Enhanced CLI with getopt argument parsing
