@@ -1,14 +1,14 @@
 # TermiView
 
-> A command-line tool that displays images as colorized ASCII art in your terminal - and a playground for experimenting with image signal processing.
+> A comprehensive command-line toolkit for learning and implementing image and video processing algorithms - from fundamentals to advanced techniques.
 
 ---
 
 ## Overview
 
-**TermiView** is a lightweight CLI tool built for developers, artists, and learners who want to explore how images can be represented, transformed, and visualized - all inside a terminal.
+**TermiView** is an educational CLI toolkit built for students, researchers, and developers who want to learn and implement image and video processing algorithms from the ground up.
 
-Originally designed to render **colorized ASCII art**, TermiView is evolving into a **visual lab** for learning and experimenting with **signal processing techniques** applied to images.
+Starting with **colorized ASCII art rendering**, TermiView is evolving into a **complete implementation** of image and video processing fundamentals, covering everything from basic transforms to advanced compression and motion estimation - all with practical, hands-on code you can study and modify.
 
 ---
 
@@ -38,25 +38,80 @@ Originally designed to render **colorized ASCII art**, TermiView is evolving int
 - **Laplacian Edge Detection** – Omnidirectional edge detection
 - **Filter Integration** – Seamlessly apply filters before ASCII conversion
 
-### 🚧 Planned (Future Phases)
+### 🚧 Planned (Curriculum-Based Roadmap)
 
-#### Phase 3: Advanced Filters
-- **Additional Edge Detectors** – Prewitt, Canny, and other edge detection algorithms
-- **Morphological Operations** – Erosion, dilation, opening, closing
-- **Custom Kernel Support** – Load custom convolution kernels from files
+#### Unit 1: Fundamentals of Image Processing
+- **Sampling and Quantization** – Demonstrate aliasing, resolution effects
+- **Basic Pixel Relationships** – Neighbors, connectivity, distance measures
+- **2D Discrete Fourier Transform (DFT)** – Frequency domain visualization
+- **Discrete Cosine Transform (DCT)** – JPEG foundation
+- **Discrete Wavelet Transform (DWT)** – Multi-resolution analysis
 
-#### Phase 4: Frequency Domain
-- **Frequency Analysis** – View Fourier transform magnitude & phase as ASCII plots
-- **FFT-based Filtering** – Apply filters in frequency domain
+#### Unit 2: Image Processing Techniques
 
-#### Phase 5: Visualization & Analysis
-- **Histogram Visualization** – Display intensity or color histograms right in the terminal
-- **Histogram Equalization** – Enhance image contrast
+**Spatial Domain Enhancement:**
+- **Histogram Processing** – Equalization, matching, specification
+- **Spatial Filtering Fundamentals** – Convolution, correlation
+- **Smoothing Filters** – Mean, Gaussian, median, bilateral
+- **Sharpening Filters** – Laplacian, unsharp masking, high-boost
 
-#### Phase 6: Real-time & Extensibility
-- **Animation Support** – Step through filter applications frame by frame
-- **Real-time Video** – Process camera/video input in real-time
-- **Plugin System** – Extensible architecture for custom filters
+**Frequency Domain Enhancement:**
+- **Frequency Domain Filtering** – Ideal, Butterworth, Gaussian filters
+- **Image Smoothing** – Low-pass filtering
+- **Image Sharpening** – High-pass filtering, high-frequency emphasis
+- **Selective Filtering** – Band-pass, band-reject, notch filters
+
+**Image Segmentation:**
+- **Point Detection** – Isolated point detection
+- **Line Detection** – Horizontal, vertical, diagonal lines
+- **Edge Detection** – Prewitt, Roberts, Canny, Marr-Hildreth
+- **Thresholding** – Global, adaptive, Otsu's method
+- **Region-Based Segmentation** – Region growing, split-and-merge
+
+#### Unit 3: Image Compression
+
+**Compression Fundamentals:**
+- **Coding Redundancy** – Variable-length coding
+- **Spatial Redundancy** – Interpixel correlation
+- **Temporal Redundancy** – Frame-to-frame correlation
+
+**Compression Techniques:**
+- **Huffman Coding** – Optimal prefix codes
+- **Arithmetic Coding** – Fractional bit encoding
+- **LZW Coding** – Dictionary-based compression
+- **Run-Length Encoding** – Sequential data compression
+- **Bit-Plane Coding** – Bit-level compression
+- **Transform Coding** – DCT-based compression
+- **Predictive Coding** – DPCM, delta modulation
+- **Wavelet Coding** – Multi-resolution compression
+- **JPEG Standard** – Complete JPEG encoder/decoder
+
+#### Unit 4: Video Processing Fundamentals
+
+**Video Basics:**
+- **Analog vs Digital Video** – Conversion and representation
+- **Time-Varying Image Formation** – 3D motion models
+- **Geometric Image Formation** – Camera models, projection
+- **Photometric Image Formation** – Lighting, shading, reflectance
+- **Video Signal Sampling** – Temporal and spatial sampling
+- **Video Filtering Operations** – Temporal filtering, noise reduction
+
+#### Unit 5: Motion Estimation & Video Coding
+
+**Motion Estimation:**
+- **Optical Flow** – Dense motion field estimation
+- **Pixel-Based Motion Estimation** – Differential methods
+- **Block Matching Algorithm** – Full search, fast algorithms (TSS, 3SS, DS)
+- **Mesh-Based Motion Estimation** – Triangular mesh warping
+- **Global Motion Estimation** – Camera motion, affine models
+- **Region-Based Motion Estimation** – Object-level motion
+- **Multi-Resolution Motion Estimation** – Hierarchical approaches
+
+**Video Coding:**
+- **Waveform-Based Coding** – PCM, DPCM
+- **Block-Based Transform Coding** – DCT for video
+- **Predictive Coding** – Inter-frame prediction, motion compensation
+- **Motion Estimation in Video Coding** – H.264/AVC, HEVC concepts
 
 ---
 
@@ -204,20 +259,52 @@ termiView/
 
 ## Learning Goals
 
-TermiView aims to serve as a **hands-on toolkit** for exploring how computers *see* and *process* images - through both **spatial** and **frequency domain** techniques.
+TermiView aims to serve as a **complete educational implementation** of image and video processing fundamentals, covering a full university-level curriculum in computer vision and multimedia processing.
 
-Planned educational modules:
+**Educational Coverage:**
 
-* Convolution & Filters
-* Image Quantization & Sampling
-* Frequency-Domain Filtering (FFT/IFFT)
-* Edge Detection
-* Histogram Equalization
+**Unit 1 - Fundamentals:**
+- Image representation and digitization
+- Sampling theory and quantization effects
+- Transform domain analysis (DFT, DCT, DWT)
+- Frequency domain concepts
+
+**Unit 2 - Processing Techniques:**
+- Spatial domain enhancement (histogram, filtering)
+- Frequency domain enhancement (spectral filtering)
+- Image segmentation (edges, regions, thresholding)
+- Feature detection and extraction
+
+**Unit 3 - Compression:**
+- Information theory and redundancy
+- Lossless compression (Huffman, LZW, RLE)
+- Lossy compression (transform, predictive, wavelet)
+- JPEG standard implementation
+
+**Unit 4 - Video Fundamentals:**
+- Video signal representation
+- Motion models and image formation
+- Temporal processing and filtering
+- Video sampling and reconstruction
+
+**Unit 5 - Motion & Video Coding:**
+- Motion estimation algorithms
+- Optical flow computation
+- Video compression techniques
+- Modern video coding standards
+
+**Learning Approach:**
+- ✅ **Practical Implementation** - Working code for every algorithm
+- ✅ **Visual Feedback** - ASCII/terminal visualization of results
+- ✅ **Modular Design** - Study individual components independently
+- ✅ **Educational Comments** - Well-documented code explaining theory
+- ✅ **Progressive Complexity** - Build from basics to advanced topics
 
 ---
 
 ## Roadmap
 
+**Foundation (Complete):**
 * [x] ASCII renderer with brightness-based mapping
 * [x] Colorized terminal support (16, 256, truecolor)
 * [x] RGB image processing
@@ -226,11 +313,44 @@ Planned educational modules:
 * [x] Build system with install/uninstall
 * [x] Kernel-based filtering (blur, sharpen, edge detection)
 * [x] Convolution engine for image processing
-* [ ] Additional edge detection algorithms
-* [ ] FFT-based visualization
-* [ ] Histogram visualization
-* [ ] Real-time video / camera input support
-* [ ] Plugin system for custom filters
+
+**Unit 1 - Fundamentals:**
+* [ ] Sampling and quantization demonstrations
+* [ ] Pixel relationship operations
+* [ ] 2D DFT implementation and visualization
+* [ ] DCT implementation
+* [ ] DWT implementation
+
+**Unit 2 - Processing Techniques:**
+* [ ] Histogram equalization and processing
+* [ ] Complete spatial filter library
+* [ ] Frequency domain filtering
+* [ ] Advanced edge detection (Canny, Prewitt, Roberts)
+* [ ] Thresholding methods (Otsu, adaptive)
+* [ ] Region-based segmentation
+
+**Unit 3 - Compression:**
+* [ ] Huffman coding
+* [ ] Arithmetic coding
+* [ ] LZW compression
+* [ ] Run-length encoding
+* [ ] Transform coding (DCT-based)
+* [ ] JPEG encoder/decoder
+* [ ] Wavelet-based compression
+
+**Unit 4 - Video Processing:**
+* [ ] Video file I/O
+* [ ] Frame extraction and processing
+* [ ] Temporal filtering
+* [ ] Motion models
+* [ ] Video sampling demonstrations
+
+**Unit 5 - Motion & Video Coding:**
+* [ ] Optical flow computation
+* [ ] Block matching algorithms
+* [ ] Motion estimation techniques
+* [ ] Video compression (predictive coding)
+* [ ] Motion-compensated prediction
 
 ---
 
