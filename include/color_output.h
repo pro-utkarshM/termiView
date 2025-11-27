@@ -10,8 +10,14 @@ typedef enum {
     COLOR_MODE_TRUECOLOR  // 24-bit RGB truecolor
 } color_mode_t;
 
-void print_rgb_image(rgb_image_t* image, bool dark_mode, color_mode_t color_mode);
+/**
+ * Print an RGB image to the terminal with color
+ */
+void print_rgb_image(const rgb_image_t* image, bool dark_mode, color_mode_t color_mode, int levels);
 
-void print_grayscale_colored(grayscale_image_t* image, bool dark_mode, color_mode_t color_mode);
+/**
+ * Print a grayscale image to the terminal with color
+ */
+void print_grayscale_colored(const grayscale_image_t* image, bool dark_mode, color_mode_t color_mode, int levels);
 
 #endif

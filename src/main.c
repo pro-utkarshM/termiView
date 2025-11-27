@@ -18,6 +18,7 @@ void print_usage(const char* program_name) {
     printf("  -w, --width <num>      Maximum width in characters (default: %d)\n", DEFAULT_MAX_WIDTH);
     printf("  -h, --height <num>     Maximum height in characters (default: %d)\n", DEFAULT_MAX_HEIGHT);
     printf("  -c, --color <mode>     Color mode: none, 16, 256, truecolor (default: truecolor)\n");
+    printf("  -L, --levels <n>       Number of quantization levels per channel (2-256, for truecolor mode)\n");
     printf("  -d, --dark             Use dark mode (default)\n");
     printf("  -l, --light            Use light mode\n");
     printf("  -o, --output <file>    Save output to file instead of stdout\n");
@@ -62,12 +63,14 @@ int main(int argc, char* argv[]) {
     char* output_file = NULL;
     char* input_file = NULL;
     filter_type_t filter_type = FILTER_NONE;
+    int quantization_levels = 256;
 
     // Long options
     static struct option long_options[] = {
         {"width",   required_argument, 0, 'w'},
         {"height",  required_argument, 0, 'h'},
         {"color",   required_argument, 0, 'c'},
+        {"levels",  required_argument, 0, 'L'},
         {"dark",    no_argument,       0, 'd'},
         {"light",   no_argument,       0, 'l'},
         {"output",  required_argument, 0, 'o'},
@@ -80,7 +83,7 @@ int main(int argc, char* argv[]) {
     // Parse options
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "w:h:c:dlo:f:v", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "w:h:c:L:dlo:f:v", long_options, &option_index)) != -1) {
         switch (opt) {
             case 0:
                 // Long option with no short equivalent
@@ -105,6 +108,13 @@ int main(int argc, char* argv[]) {
                 break;
             case 'c':
                 color_mode = parse_color_mode(optarg);
+                break;
+            case 'L':
+                quantization_levels = atoi(optarg);
+                if (quantization_levels < 2 || quantization_levels > 256) {
+                    fprintf(stderr, "Error: Levels must be between 2 and 256\n");
+                    return 1;
+                }
                 break;
             case 'd':
                 dark_mode = true;
@@ -234,7 +244,7 @@ int main(int argc, char* argv[]) {
         if (color_mode == COLOR_MODE_NONE) {
             print_image(&resized, dark_mode);
         } else {
-            print_grayscale_colored(&resized, dark_mode, color_mode);
+            print_grayscale_colored(&resized, dark_mode, color_mode, quantization_levels);
         }
 
         // Cleanup
@@ -310,7 +320,7 @@ int main(int argc, char* argv[]) {
             if (color_mode == COLOR_MODE_NONE) {
                 print_image(&resized, dark_mode);
             } else {
-                print_grayscale_colored(&resized, dark_mode, color_mode);
+                print_grayscale_colored(&resized, dark_mode, color_mode, quantization_levels);
             }
             free(resized.data);
             free(filtered_gray.data);
@@ -334,7 +344,7 @@ int main(int argc, char* argv[]) {
                 print_image(&gray, dark_mode);
                 free(gray.data);
             } else {
-                print_rgb_image(&resized, dark_mode, color_mode);
+                print_rgb_image(&resized, dark_mode, color_mode, quantization_levels);
             }
             free_rgb_image(&resized);
         }

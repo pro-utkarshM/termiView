@@ -100,7 +100,7 @@ static void print_colored_char(char ch, unsigned char r, unsigned char g, unsign
     }
 }
 
-void print_rgb_image(rgb_image_t* image, bool dark_mode, color_mode_t color_mode) {
+void print_rgb_image(const rgb_image_t* image, bool dark_mode, color_mode_t color_mode, int levels) {
     for (size_t y = 0; y < image->height; y++) {
         for (size_t x = 0; x < image->width; x++) {
             size_t idx = y * image->width + x;
@@ -108,6 +108,13 @@ void print_rgb_image(rgb_image_t* image, bool dark_mode, color_mode_t color_mode
             unsigned char g = image->g_data[idx];
             unsigned char b = image->b_data[idx];
             
+            // Quantize colors if levels are specified
+            if (color_mode == COLOR_MODE_TRUECOLOR && levels < 256) {
+                r = (unsigned char)((int)((r / 255.0) * (levels - 1)) * (255.0 / (levels - 1)));
+                g = (unsigned char)((int)((g / 255.0) * (levels - 1)) * (255.0 / (levels - 1)));
+                b = (unsigned char)((int)((b / 255.0) * (levels - 1)) * (255.0 / (levels - 1)));
+            }
+
             // Calculate brightness for ASCII character selection
             unsigned char brightness = (unsigned char)(0.299 * r + 0.587 * g + 0.114 * b);
             char ch = get_ascii_char(brightness, dark_mode);
@@ -118,7 +125,8 @@ void print_rgb_image(rgb_image_t* image, bool dark_mode, color_mode_t color_mode
     }
 }
 
-void print_grayscale_colored(grayscale_image_t* image, bool dark_mode, color_mode_t color_mode) {
+void print_grayscale_colored(const grayscale_image_t* image, bool dark_mode, color_mode_t color_mode, int levels) {
+    (void)levels; // Unused parameter
     for (size_t y = 0; y < image->height; y++) {
         for (size_t x = 0; x < image->width; x++) {
             size_t idx = y * image->width + x;
