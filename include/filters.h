@@ -12,6 +12,7 @@ typedef enum {
     FILTER_BLUR,
     FILTER_SHARPEN,
     FILTER_EDGE_SOBEL,
+    FILTER_EDGE_PREWITT,
     FILTER_EDGE_LAPLACIAN
 } filter_type_t;
 
@@ -44,6 +45,12 @@ rgb_image_t apply_convolution_rgb(const rgb_image_t* image, const kernel_t* kern
 grayscale_image_t apply_sobel_edge_detection(const grayscale_image_t* image);
 
 /**
+ * Apply Prewitt edge detection to a grayscale image
+ * Returns a new image with the filter applied
+ */
+grayscale_image_t apply_prewitt_edge_detection(const grayscale_image_t* image);
+
+/**
  * Create a Gaussian blur kernel
  * size: kernel dimension (must be odd, e.g., 3, 5, 7)
  * sigma: standard deviation for Gaussian distribution
@@ -64,6 +71,16 @@ kernel_t create_sobel_x_kernel(void);
  * Create a Sobel edge detection kernel (vertical)
  */
 kernel_t create_sobel_y_kernel(void);
+
+/**
+ * Create a Prewitt edge detection kernel (horizontal)
+ */
+kernel_t create_prewitt_x_kernel(void);
+
+/**
+ * Create a Prewitt edge detection kernel (vertical)
+ */
+kernel_t create_prewitt_y_kernel(void);
 
 /**
  * Create a Laplacian edge detection kernel

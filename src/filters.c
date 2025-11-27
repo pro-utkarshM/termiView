@@ -239,6 +239,58 @@ kernel_t create_sobel_y_kernel(void) {
     return kernel;
 }
 
+kernel_t create_prewitt_x_kernel(void) {
+    kernel_t kernel = {0};
+    kernel.size = 3;
+    kernel.data = (float*)malloc(9 * sizeof(float));
+    kernel.divisor = 1.0f;
+    kernel.offset = 0.0f;
+
+    if (kernel.data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for Prewitt X kernel\n");
+        return kernel;
+    }
+
+    // Prewitt X (horizontal edges):
+    // -1  0  1
+    // -1  0  1
+    // -1  0  1
+    float values[] = {
+        -1.0f,  0.0f,  1.0f,
+        -1.0f,  0.0f,  1.0f,
+        -1.0f,  0.0f,  1.0f
+    };
+
+    memcpy(kernel.data, values, 9 * sizeof(float));
+    return kernel;
+}
+
+kernel_t create_prewitt_y_kernel(void) {
+    kernel_t kernel = {0};
+    kernel.size = 3;
+    kernel.data = (float*)malloc(9 * sizeof(float));
+    kernel.divisor = 1.0f;
+    kernel.offset = 0.0f;
+
+    if (kernel.data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for Prewitt Y kernel\n");
+        return kernel;
+    }
+
+    // Prewitt Y (vertical edges):
+    // -1 -1 -1
+    //  0  0  0
+    //  1  1  1
+    float values[] = {
+        -1.0f, -1.0f, -1.0f,
+         0.0f,  0.0f,  0.0f,
+         1.0f,  1.0f,  1.0f
+    };
+
+    memcpy(kernel.data, values, 9 * sizeof(float));
+    return kernel;
+}
+
 kernel_t create_laplacian_kernel(void) {
     kernel_t kernel = {0};
     kernel.size = 3;
@@ -314,6 +366,47 @@ grayscale_image_t apply_sobel_edge_detection(const grayscale_image_t* image) {
     return result;
 }
 
+grayscale_image_t apply_prewitt_edge_detection(const grayscale_image_t* image) {
+    grayscale_image_t result = {0};
+    if (image == NULL || image->data == NULL) {
+        fprintf(stderr, "Error: Invalid input to apply_prewitt_edge_detection\n");
+        return result;
+    }
+
+    // 1. Create Prewitt kernels
+    kernel_t kernel_x = create_prewitt_x_kernel();
+    kernel_t kernel_y = create_prewitt_y_kernel();
+
+    // 2. Apply convolutions
+    grayscale_image_t gx_image = apply_convolution_grayscale(image, &kernel_x);
+    grayscale_image_t gy_image = apply_convolution_grayscale(image, &kernel_y);
+
+    // 3. Combine results
+    result.width = image->width;
+    result.height = image->height;
+    result.data = (unsigned char*)malloc(result.width * result.height);
+    if (result.data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for Prewitt result\n");
+        result.width = 0;
+        result.height = 0;
+    } else {
+        for (size_t i = 0; i < result.width * result.height; i++) {
+            float gx = (float)gx_image.data[i];
+            float gy = (float)gy_image.data[i];
+            float magnitude = sqrtf(gx * gx + gy * gy);
+            result.data[i] = clamp_byte(magnitude);
+        }
+    }
+
+    // 4. Cleanup
+    free(gx_image.data);
+    free(gy_image.data);
+    free_kernel(&kernel_x);
+    free_kernel(&kernel_y);
+
+    return result;
+}
+
 filter_type_t parse_filter_type(const char* filter_str) {
     if (filter_str == NULL) {
         return FILTER_NONE;
@@ -325,6 +418,8 @@ filter_type_t parse_filter_type(const char* filter_str) {
         return FILTER_SHARPEN;
     } else if (strcmp(filter_str, "sobel") == 0 || strcmp(filter_str, "edge-sobel") == 0) {
         return FILTER_EDGE_SOBEL;
+    } else if (strcmp(filter_str, "prewitt") == 0 || strcmp(filter_str, "edge-prewitt") == 0) {
+        return FILTER_EDGE_PREWITT;
     } else if (strcmp(filter_str, "laplacian") == 0 || strcmp(filter_str, "edge-laplacian") == 0) {
         return FILTER_EDGE_LAPLACIAN;
     } else if (strcmp(filter_str, "none") == 0) {
