@@ -17,9 +17,14 @@ typedef struct {
     unsigned char* b_data;
 } rgb_image_t;
 
+typedef enum {
+    INTERPOLATION_NEAREST,
+    INTERPOLATION_AVERAGE
+} interpolation_method_t;
+
 grayscale_image_t load_image_as_grayscale(const char* file_path);
 
-grayscale_image_t make_resized_grayscale(grayscale_image_t* original, size_t max_width, size_t max_height);
+grayscale_image_t make_resized_grayscale(grayscale_image_t* original, size_t max_width, size_t max_height, interpolation_method_t method);
 
 void print_image(grayscale_image_t* image, bool dark_mode);
 
@@ -27,7 +32,7 @@ void free_grayscale_image(grayscale_image_t* image);
 
 rgb_image_t load_image_as_rgb(const char* file_path);
 
-rgb_image_t make_resized_rgb(rgb_image_t* original, size_t max_width, size_t max_height);
+rgb_image_t make_resized_rgb(rgb_image_t* original, size_t max_width, size_t max_height, interpolation_method_t method);
 
 void free_rgb_image(rgb_image_t* image);
 

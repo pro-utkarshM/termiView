@@ -41,7 +41,7 @@ unsigned char get_average(grayscale_image_t* image, size_t x1, size_t x2, size_t
 }
 
 
-grayscale_image_t make_resized_grayscale(grayscale_image_t* original, size_t max_width, size_t max_height) {
+grayscale_image_t make_resized_grayscale(grayscale_image_t* original, size_t max_width, size_t max_height, interpolation_method_t method) {
     size_t width, height;
 
     size_t proposed_height = (original->height * max_width) / (2 * original->width);
@@ -58,14 +58,24 @@ grayscale_image_t make_resized_grayscale(grayscale_image_t* original, size_t max
         return (grayscale_image_t) { .width = 0, .height = 0, .data = NULL };
     }
 
-    for (size_t i = 0; i < width; i++) {
-        size_t x1 = (i * original->width) / (width);
-        size_t x2 = ((i + 1) * original->width) / (width);
+    if (method == INTERPOLATION_NEAREST) {
         for (size_t j = 0; j < height; j++) {
-            size_t y1 = (j * original->height) / (height);
-            size_t y2 = ((j + 1) * original->height) / (height);
+            for (size_t i = 0; i < width; i++) {
+                size_t x = (i * original->width) / width;
+                size_t y = (j * original->height) / height;
+                data[i + j * width] = original->data[x + y * original->width];
+            }
+        }
+    } else { // INTERPOLATION_AVERAGE
+        for (size_t i = 0; i < width; i++) {
+            size_t x1 = (i * original->width) / (width);
+            size_t x2 = ((i + 1) * original->width) / (width);
+            for (size_t j = 0; j < height; j++) {
+                size_t y1 = (j * original->height) / (height);
+                size_t y2 = ((j + 1) * original->height) / (height);
 
-            data[i + j * width] = get_average(original, x1, x2, y1, y2);
+                data[i + j * width] = get_average(original, x1, x2, y1, y2);
+            }
         }
     }
 
@@ -186,7 +196,7 @@ rgb_pixel_t get_average_rgb(rgb_image_t* image, size_t x1, size_t x2, size_t y1,
 }
 
 
-rgb_image_t make_resized_rgb(rgb_image_t* original, size_t max_width, size_t max_height) {
+rgb_image_t make_resized_rgb(rgb_image_t* original, size_t max_width, size_t max_height, interpolation_method_t method) {
     size_t width, height;
 
     size_t proposed_height = (original->height * max_width) / (2 * original->width);
@@ -209,18 +219,32 @@ rgb_image_t make_resized_rgb(rgb_image_t* original, size_t max_width, size_t max
         return (rgb_image_t) { .width = 0, .height = 0, .r_data = NULL, .g_data = NULL, .b_data = NULL };
     }
 
-    for (size_t i = 0; i < width; i++) {
-        size_t x1 = (i * original->width) / (width);
-        size_t x2 = ((i + 1) * original->width) / (width);
+    if (method == INTERPOLATION_NEAREST) {
         for (size_t j = 0; j < height; j++) {
-            size_t y1 = (j * original->height) / (height);
-            size_t y2 = ((j + 1) * original->height) / (height);
+            for (size_t i = 0; i < width; i++) {
+                size_t x = (i * original->width) / width;
+                size_t y = (j * original->height) / height;
+                size_t original_idx = x + y * original->width;
+                size_t new_idx = i + j * width;
+                r_data[new_idx] = original->r_data[original_idx];
+                g_data[new_idx] = original->g_data[original_idx];
+                b_data[new_idx] = original->b_data[original_idx];
+            }
+        }
+    } else { // INTERPOLATION_AVERAGE
+        for (size_t i = 0; i < width; i++) {
+            size_t x1 = (i * original->width) / (width);
+            size_t x2 = ((i + 1) * original->width) / (width);
+            for (size_t j = 0; j < height; j++) {
+                size_t y1 = (j * original->height) / (height);
+                size_t y2 = ((j + 1) * original->height) / (height);
 
-            rgb_pixel_t avg = get_average_rgb(original, x1, x2, y1, y2);
-            size_t idx = i + j * width;
-            r_data[idx] = avg.r;
-            g_data[idx] = avg.g;
-            b_data[idx] = avg.b;
+                rgb_pixel_t avg = get_average_rgb(original, x1, x2, y1, y2);
+                size_t idx = i + j * width;
+                r_data[idx] = avg.r;
+                g_data[idx] = avg.g;
+                b_data[idx] = avg.b;
+            }
         }
     }
 

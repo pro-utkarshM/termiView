@@ -19,6 +19,7 @@ void print_usage(const char* program_name) {
     printf("  -h, --height <num>     Maximum height in characters (default: %d)\n", DEFAULT_MAX_HEIGHT);
     printf("  -c, --color <mode>     Color mode: none, 16, 256, truecolor (default: truecolor)\n");
     printf("  -L, --levels <n>       Number of quantization levels per channel (2-256, for truecolor mode)\n");
+    printf("  -i, --interpolation <m> Interpolation method: nearest, average (default: average)\n");
     printf("  -d, --dark             Use dark mode (default)\n");
     printf("  -l, --light            Use light mode\n");
     printf("  -o, --output <file>    Save output to file instead of stdout\n");
@@ -64,6 +65,7 @@ int main(int argc, char* argv[]) {
     char* input_file = NULL;
     filter_type_t filter_type = FILTER_NONE;
     int quantization_levels = 256;
+    interpolation_method_t interpolation_method = INTERPOLATION_AVERAGE;
 
     // Long options
     static struct option long_options[] = {
@@ -71,6 +73,7 @@ int main(int argc, char* argv[]) {
         {"height",  required_argument, 0, 'h'},
         {"color",   required_argument, 0, 'c'},
         {"levels",  required_argument, 0, 'L'},
+        {"interpolation", required_argument, 0, 'i'},
         {"dark",    no_argument,       0, 'd'},
         {"light",   no_argument,       0, 'l'},
         {"output",  required_argument, 0, 'o'},
@@ -83,7 +86,7 @@ int main(int argc, char* argv[]) {
     // Parse options
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "w:h:c:L:dlo:f:v", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "w:h:c:L:i:dlo:f:v", long_options, &option_index)) != -1) {
         switch (opt) {
             case 0:
                 // Long option with no short equivalent
@@ -113,6 +116,16 @@ int main(int argc, char* argv[]) {
                 quantization_levels = atoi(optarg);
                 if (quantization_levels < 2 || quantization_levels > 256) {
                     fprintf(stderr, "Error: Levels must be between 2 and 256\n");
+                    return 1;
+                }
+                break;
+            case 'i':
+                if (strcmp(optarg, "nearest") == 0) {
+                    interpolation_method = INTERPOLATION_NEAREST;
+                } else if (strcmp(optarg, "average") == 0) {
+                    interpolation_method = INTERPOLATION_AVERAGE;
+                } else {
+                    fprintf(stderr, "Error: Unknown interpolation method '%s'\n", optarg);
                     return 1;
                 }
                 break;
@@ -229,7 +242,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         
-        grayscale_image_t resized = make_resized_grayscale(to_resize, max_width, max_height);
+        grayscale_image_t resized = make_resized_grayscale(to_resize, max_width, max_height, interpolation_method);
         if (resized.data == NULL) {
             free_grayscale_image(&gray_original);
             if (filtered.data != NULL) free(filtered.data);
@@ -306,7 +319,7 @@ int main(int argc, char* argv[]) {
 
         if (to_print_gray != NULL) {
             // Process and print the grayscale result from sobel/laplacian
-            grayscale_image_t resized = make_resized_grayscale(to_print_gray, max_width, max_height);
+            grayscale_image_t resized = make_resized_grayscale(to_print_gray, max_width, max_height, interpolation_method);
             if (resized.data == NULL) {
                 free_rgb_image(&rgb_original);
                 free(filtered_gray.data);
@@ -326,7 +339,7 @@ int main(int argc, char* argv[]) {
             free(filtered_gray.data);
         } else {
             // Process RGB image
-            rgb_image_t resized = make_resized_rgb(to_resize_rgb, max_width, max_height);
+            rgb_image_t resized = make_resized_rgb(to_resize_rgb, max_width, max_height, interpolation_method);
             if (resized.r_data == NULL) {
                 free_rgb_image(&rgb_original);
                 if (filtered_rgb.r_data != NULL) free_rgb_image(&filtered_rgb);
