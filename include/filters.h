@@ -38,6 +38,12 @@ grayscale_image_t apply_convolution_grayscale(const grayscale_image_t* image, co
 rgb_image_t apply_convolution_rgb(const rgb_image_t* image, const kernel_t* kernel);
 
 /**
+ * Apply Sobel edge detection to a grayscale image
+ * Returns a new image with the filter applied
+ */
+grayscale_image_t apply_sobel_edge_detection(const grayscale_image_t* image);
+
+/**
  * Create a Gaussian blur kernel
  * size: kernel dimension (must be odd, e.g., 3, 5, 7)
  * sigma: standard deviation for Gaussian distribution

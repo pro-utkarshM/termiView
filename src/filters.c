@@ -273,6 +273,47 @@ void free_kernel(kernel_t* kernel) {
     }
 }
 
+grayscale_image_t apply_sobel_edge_detection(const grayscale_image_t* image) {
+    grayscale_image_t result = {0};
+    if (image == NULL || image->data == NULL) {
+        fprintf(stderr, "Error: Invalid input to apply_sobel_edge_detection\n");
+        return result;
+    }
+
+    // 1. Create Sobel kernels
+    kernel_t kernel_x = create_sobel_x_kernel();
+    kernel_t kernel_y = create_sobel_y_kernel();
+
+    // 2. Apply convolutions
+    grayscale_image_t gx_image = apply_convolution_grayscale(image, &kernel_x);
+    grayscale_image_t gy_image = apply_convolution_grayscale(image, &kernel_y);
+
+    // 3. Combine results
+    result.width = image->width;
+    result.height = image->height;
+    result.data = (unsigned char*)malloc(result.width * result.height);
+    if (result.data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for Sobel result\n");
+        result.width = 0;
+        result.height = 0;
+    } else {
+        for (size_t i = 0; i < result.width * result.height; i++) {
+            float gx = (float)gx_image.data[i];
+            float gy = (float)gy_image.data[i];
+            float magnitude = sqrtf(gx * gx + gy * gy);
+            result.data[i] = clamp_byte(magnitude);
+        }
+    }
+
+    // 4. Cleanup
+    free(gx_image.data);
+    free(gy_image.data);
+    free_kernel(&kernel_x);
+    free_kernel(&kernel_y);
+
+    return result;
+}
+
 filter_type_t parse_filter_type(const char* filter_str) {
     if (filter_str == NULL) {
         return FILTER_NONE;

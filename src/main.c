@@ -178,7 +178,8 @@ int main(int argc, char* argv[]) {
                     kernel = create_sharpen_kernel();
                     break;
                 case FILTER_EDGE_SOBEL:
-                    kernel = create_sobel_x_kernel();
+                    filtered = apply_sobel_edge_detection(&gray_original);
+                    to_resize = &filtered;
                     break;
                 case FILTER_EDGE_LAPLACIAN:
                     kernel = create_laplacian_kernel();
@@ -193,14 +194,27 @@ int main(int argc, char* argv[]) {
                 if (filtered.data != NULL) {
                     to_resize = &filtered;
                 }
+            } else if (filter_type == FILTER_EDGE_SOBEL && filtered.data == NULL) {
+                // Sobel failed, so we should not proceed
+                to_resize = NULL;
             }
         }
 
         // Process grayscale image
+        if (to_resize == NULL) {
+            // Error occurred in filtering
+            free_grayscale_image(&gray_original);
+            if (output_file != NULL) {
+                fclose(stdout);
+                stdout = original_stdout;
+            }
+            return 1;
+        }
+        
         grayscale_image_t resized = make_resized_grayscale(to_resize, max_width, max_height);
         if (resized.data == NULL) {
             free_grayscale_image(&gray_original);
-            if (filtered.data != NULL) free_grayscale_image(&filtered);
+            if (filtered.data != NULL) free(filtered.data);
             if (output_file != NULL) {
                 fclose(stdout);
                 stdout = original_stdout;
@@ -217,67 +231,105 @@ int main(int argc, char* argv[]) {
 
         // Cleanup
         free_grayscale_image(&gray_original);
-        if (filtered.data != NULL) free_grayscale_image(&filtered);
-        free_grayscale_image(&resized);
+        if (filtered.data != NULL) free(filtered.data);
+        free(resized.data);
     } else {
         // Apply filter if specified
         rgb_image_t filtered_rgb = {0};
+        grayscale_image_t filtered_gray = {0};
         rgb_image_t* to_resize_rgb = &rgb_original;
-        
+        grayscale_image_t* to_print_gray = NULL;
+
         if (filter_type != FILTER_NONE) {
-            kernel_t kernel = {0};
-            switch (filter_type) {
-                case FILTER_BLUR:
-                    kernel = create_gaussian_blur_kernel(5, 1.0f);
-                    break;
-                case FILTER_SHARPEN:
-                    kernel = create_sharpen_kernel();
-                    break;
-                case FILTER_EDGE_SOBEL:
-                    kernel = create_sobel_x_kernel();
-                    break;
-                case FILTER_EDGE_LAPLACIAN:
-                    kernel = create_laplacian_kernel();
-                    break;
-                default:
-                    break;
-            }
-            
-            if (kernel.data != NULL) {
-                filtered_rgb = apply_convolution_rgb(&rgb_original, &kernel);
-                free_kernel(&kernel);
-                if (filtered_rgb.r_data != NULL) {
-                    to_resize_rgb = &filtered_rgb;
+            if (filter_type == FILTER_EDGE_SOBEL || filter_type == FILTER_EDGE_LAPLACIAN) {
+                // These filters work on grayscale images
+                grayscale_image_t gray_temp = rgb_to_grayscale(&rgb_original);
+                if (gray_temp.data != NULL) {
+                    if (filter_type == FILTER_EDGE_SOBEL) {
+                        filtered_gray = apply_sobel_edge_detection(&gray_temp);
+                    } else { // LAPLACIAN
+                        kernel_t kernel = create_laplacian_kernel();
+                        filtered_gray = apply_convolution_grayscale(&gray_temp, &kernel);
+                        free_kernel(&kernel);
+                    }
+                    free(gray_temp.data); // free temp grayscale
+
+                    if (filtered_gray.data != NULL) {
+                        to_print_gray = &filtered_gray;
+                    }
+                }
+            } else {
+                // Apply filter to RGB channels
+                kernel_t kernel = {0};
+                switch (filter_type) {
+                    case FILTER_BLUR:
+                        kernel = create_gaussian_blur_kernel(5, 1.0f);
+                        break;
+                    case FILTER_SHARPEN:
+                        kernel = create_sharpen_kernel();
+                        break;
+                    default:
+                        break;
+                }
+                
+                if (kernel.data != NULL) {
+                    filtered_rgb = apply_convolution_rgb(&rgb_original, &kernel);
+                    free_kernel(&kernel);
+                    if (filtered_rgb.r_data != NULL) {
+                        to_resize_rgb = &filtered_rgb;
+                    }
                 }
             }
         }
 
-        // Process RGB image
-        rgb_image_t resized = make_resized_rgb(to_resize_rgb, max_width, max_height);
-        if (resized.r_data == NULL) {
-            free_rgb_image(&rgb_original);
-            if (filtered_rgb.r_data != NULL) free_rgb_image(&filtered_rgb);
-            if (output_file != NULL) {
-                fclose(stdout);
-                stdout = original_stdout;
+        if (to_print_gray != NULL) {
+            // Process and print the grayscale result from sobel/laplacian
+            grayscale_image_t resized = make_resized_grayscale(to_print_gray, max_width, max_height);
+            if (resized.data == NULL) {
+                free_rgb_image(&rgb_original);
+                free(filtered_gray.data);
+                if (output_file != NULL) {
+                    fclose(stdout);
+                    stdout = original_stdout;
+                }
+                return 1;
             }
-            return 1;
-        }
 
-        // Print image
-        if (color_mode == COLOR_MODE_NONE) {
-            // Convert to grayscale for non-color output
-            grayscale_image_t gray = rgb_to_grayscale(&resized);
-            print_image(&gray, dark_mode);
-            free_grayscale_image(&gray);
+            if (color_mode == COLOR_MODE_NONE) {
+                print_image(&resized, dark_mode);
+            } else {
+                print_grayscale_colored(&resized, dark_mode, color_mode);
+            }
+            free(resized.data);
+            free(filtered_gray.data);
         } else {
-            print_rgb_image(&resized, dark_mode, color_mode);
+            // Process RGB image
+            rgb_image_t resized = make_resized_rgb(to_resize_rgb, max_width, max_height);
+            if (resized.r_data == NULL) {
+                free_rgb_image(&rgb_original);
+                if (filtered_rgb.r_data != NULL) free_rgb_image(&filtered_rgb);
+                if (output_file != NULL) {
+                    fclose(stdout);
+                    stdout = original_stdout;
+                }
+                return 1;
+            }
+
+            // Print image
+            if (color_mode == COLOR_MODE_NONE) {
+                // Convert to grayscale for non-color output
+                grayscale_image_t gray = rgb_to_grayscale(&resized);
+                print_image(&gray, dark_mode);
+                free(gray.data);
+            } else {
+                print_rgb_image(&resized, dark_mode, color_mode);
+            }
+            free_rgb_image(&resized);
         }
 
         // Cleanup
         free_rgb_image(&rgb_original);
         if (filtered_rgb.r_data != NULL) free_rgb_image(&filtered_rgb);
-        free_rgb_image(&resized);
     }
 
     // Restore stdout if redirected
