@@ -34,7 +34,9 @@ Starting with **colorized ASCII art rendering**, TermiView is evolving into a **
 - **Kernel-Based Convolution** – Apply convolution operations to images
 - **Gaussian Blur Filter** – Smooth images with configurable kernel size and sigma
 - **Sharpen Filter** – Enhance edges and details in images
-- **Sobel Edge Detection** – Detect horizontal edges using Sobel operator
+- **Sobel Edge Detection** – Gradient magnitude edge detection
+- **Prewitt Edge Detection** – Gradient-based edge detection
+- **Roberts Cross Edge Detection** – Diagonal edge detection
 - **Laplacian Edge Detection** – Omnidirectional edge detection
 - **Filter Integration** – Seamlessly apply filters before ASCII conversion
 
@@ -156,7 +158,7 @@ Options:
   -d, --dark             Use dark mode (default)
   -l, --light            Use light mode
   -o, --output <file>    Save output to file instead of stdout
-  -f, --filter <type>    Apply filter: blur, sharpen, sobel, laplacian (default: none)
+  -f, --filter <type>    Apply filter: blur, sharpen, sobel, prewitt, roberts, laplacian (default: none)
   -v, --version          Show version information
   --help                 Show this help message
 ```
@@ -201,6 +203,16 @@ termiView -f sharpen --color 256 photo.png
 **Edge detection with Sobel operator:**
 ```bash
 termiView --filter sobel image.jpg -w 80 -h 60
+```
+
+**Edge detection with Prewitt operator:**
+```bash
+termiView --filter prewitt image.jpg -w 80 -h 60
+```
+
+**Edge detection with Roberts Cross operator:**
+```bash
+termiView --filter roberts image.jpg -w 80 -h 60
 ```
 
 **Laplacian edge detection in grayscale:**
@@ -325,7 +337,8 @@ TermiView aims to serve as a **complete educational implementation** of image an
 * [ ] Histogram equalization and processing
 * [ ] Complete spatial filter library
 * [ ] Frequency domain filtering
-* [ ] Advanced edge detection (Canny, Prewitt, Roberts)
+* [x] Advanced edge detection (Prewitt, Roberts)
+* [ ] Advanced edge detection (Canny)
 * [ ] Thresholding methods (Otsu, adaptive)
 * [ ] Region-based segmentation
 
@@ -356,11 +369,16 @@ TermiView aims to serve as a **complete educational implementation** of image an
 
 ## Version History
 
-### v0.3.0 - Phase 2: Image Filtering (Current)
+### v0.4.0 - Phase 2: Advanced Edge Detection (Current)
+- ✅ Sobel edge detection (gradient magnitude)
+- ✅ Prewitt edge detection filter
+- ✅ Roberts Cross edge detection filter
+
+### v0.3.0 - Phase 2: Image Filtering
 - ✅ Kernel-based convolution engine for grayscale and RGB images
 - ✅ Gaussian blur filter with configurable parameters
 - ✅ Sharpen filter for edge enhancement
-- ✅ Sobel edge detection (horizontal)
+- ✅ Initial Sobel edge detection (horizontal)
 - ✅ Laplacian edge detection (omnidirectional)
 - ✅ Filter CLI option (`--filter` / `-f`)
 - ✅ Seamless integration with existing color modes
