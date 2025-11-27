@@ -282,3 +282,149 @@ grayscale_image_t rgb_to_grayscale(rgb_image_t* rgb) {
         .data = data
     };
 }
+
+// Disjoint Set Union (DSU) implementation
+typedef struct {
+    int* parent;
+    int count;
+} DSU;
+
+static DSU* dsu_create(int n) {
+    DSU* dsu = (DSU*)malloc(sizeof(DSU));
+    dsu->parent = (int*)malloc(n * sizeof(int));
+    for (int i = 0; i < n; i++) {
+        dsu->parent[i] = i;
+    }
+    dsu->count = n;
+    return dsu;
+}
+
+static int dsu_find(DSU* dsu, int i) {
+    if (dsu->parent[i] == i) {
+        return i;
+    }
+    return dsu->parent[i] = dsu_find(dsu, dsu->parent[i]);
+}
+
+static void dsu_union(DSU* dsu, int i, int j) {
+    int root_i = dsu_find(dsu, i);
+    int root_j = dsu_find(dsu, j);
+    if (root_i != root_j) {
+        dsu->parent[root_i] = root_j;
+        dsu->count--;
+    }
+}
+
+static void dsu_free(DSU* dsu) {
+    free(dsu->parent);
+    free(dsu);
+}
+
+grayscale_image_t connected_components(grayscale_image_t* image, int connectivity) {
+    grayscale_image_t result = {0};
+    if (image == NULL || image->data == NULL) {
+        return result;
+    }
+
+    size_t width = image->width;
+    size_t height = image->height;
+    size_t num_pixels = width * height;
+
+    int* labels = (int*)calloc(num_pixels, sizeof(int));
+    if (labels == NULL) {
+        return result;
+    }
+
+    DSU* dsu = dsu_create(num_pixels / 2); // Initial guess for number of labels
+    int next_label = 1;
+
+    // 1. First pass: label image and record equivalences
+    for (size_t y = 0; y < height; y++) {
+        for (size_t x = 0; x < width; x++) {
+            size_t idx = y * width + x;
+            if (image->data[idx] > 128) { // Binarize
+                int smallest_neighbor_label = 0;
+                
+                // Check neighbors
+                // Left
+                if (x > 0 && labels[idx - 1] > 0) {
+                    smallest_neighbor_label = labels[idx - 1];
+                }
+                // Top
+                if (y > 0 && labels[idx - width] > 0) {
+                    int top_label = labels[idx - width];
+                    if (smallest_neighbor_label == 0) {
+                        smallest_neighbor_label = top_label;
+                    } else if (smallest_neighbor_label != top_label) {
+                        dsu_union(dsu, smallest_neighbor_label, top_label);
+                    }
+                }
+
+                if (connectivity == 8) {
+                    // Top-left
+                    if (y > 0 && x > 0 && labels[idx - width - 1] > 0) {
+                        int tl_label = labels[idx - width - 1];
+                        if (smallest_neighbor_label == 0) {
+                            smallest_neighbor_label = tl_label;
+                        } else if (smallest_neighbor_label != tl_label) {
+                            dsu_union(dsu, smallest_neighbor_label, tl_label);
+                        }
+                    }
+                    // Top-right
+                    if (y > 0 && x < width - 1 && labels[idx - width + 1] > 0) {
+                        int tr_label = labels[idx - width + 1];
+                        if (smallest_neighbor_label == 0) {
+                            smallest_neighbor_label = tr_label;
+                        } else if (smallest_neighbor_label != tr_label) {
+                            dsu_union(dsu, smallest_neighbor_label, tr_label);
+                        }
+                    }
+                }
+
+                if (smallest_neighbor_label == 0) {
+                    labels[idx] = next_label++;
+                    if (next_label > dsu->count) {
+                        // Resize DSU if needed
+                        dsu->parent = (int*)realloc(dsu->parent, next_label * 2 * sizeof(int));
+                        for (int i = dsu->count; i < next_label * 2; i++) dsu->parent[i] = i;
+                        dsu->count = next_label * 2;
+                    }
+                } else {
+                    labels[idx] = smallest_neighbor_label;
+                }
+            }
+        }
+    }
+
+    // 2. Second pass: resolve labels
+    for (size_t i = 0; i < num_pixels; i++) {
+        if (labels[i] > 0) {
+            labels[i] = dsu_find(dsu, labels[i]);
+        }
+    }
+
+    // Create a color map for labels
+    int* colors = (int*)calloc(next_label, sizeof(int));
+    int color_count = 1;
+    for (size_t i = 0; i < num_pixels; i++) {
+        if (labels[i] > 0 && colors[labels[i]] == 0) {
+            colors[labels[i]] = (color_count++ * 50) % 256;
+        }
+    }
+
+    // Create output image
+    result.width = width;
+    result.height = height;
+    result.data = (unsigned char*)malloc(num_pixels);
+    if (result.data != NULL) {
+        for (size_t i = 0; i < num_pixels; i++) {
+            result.data[i] = (unsigned char)colors[labels[i]];
+        }
+    }
+
+    free(labels);
+    free(colors);
+    dsu_free(dsu);
+
+    return result;
+}

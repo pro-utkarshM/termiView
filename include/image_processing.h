@@ -37,4 +37,7 @@ rgb_image_t make_resized_rgb(rgb_image_t* original, size_t max_width, size_t max
 void free_rgb_image(rgb_image_t* image);
 
 grayscale_image_t rgb_to_grayscale(rgb_image_t* rgb);
+
+grayscale_image_t connected_components(grayscale_image_t* image, int connectivity);
+
 #endif

@@ -20,6 +20,7 @@ void print_usage(const char* program_name) {
     printf("  -c, --color <mode>     Color mode: none, 16, 256, truecolor (default: truecolor)\n");
     printf("  -L, --levels <n>       Number of quantization levels per channel (2-256, for truecolor mode)\n");
     printf("  -i, --interpolation <m> Interpolation method: nearest, average (default: average)\n");
+    printf("  -C, --connectivity <t> Find connected components (4 or 8 connectivity)\n");
     printf("  -d, --dark             Use dark mode (default)\n");
     printf("  -l, --light            Use light mode\n");
     printf("  -o, --output <file>    Save output to file instead of stdout\n");
@@ -66,6 +67,7 @@ int main(int argc, char* argv[]) {
     filter_type_t filter_type = FILTER_NONE;
     int quantization_levels = 256;
     interpolation_method_t interpolation_method = INTERPOLATION_AVERAGE;
+    int connectivity = 0;
 
     // Long options
     static struct option long_options[] = {
@@ -74,6 +76,7 @@ int main(int argc, char* argv[]) {
         {"color",   required_argument, 0, 'c'},
         {"levels",  required_argument, 0, 'L'},
         {"interpolation", required_argument, 0, 'i'},
+        {"connectivity", required_argument, 0, 'C'},
         {"dark",    no_argument,       0, 'd'},
         {"light",   no_argument,       0, 'l'},
         {"output",  required_argument, 0, 'o'},
@@ -86,7 +89,7 @@ int main(int argc, char* argv[]) {
     // Parse options
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "w:h:c:L:i:dlo:f:v", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "w:h:c:L:i:C:dlo:f:v", long_options, &option_index)) != -1) {
         switch (opt) {
             case 0:
                 // Long option with no short equivalent
@@ -129,6 +132,13 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
                 break;
+            case 'C':
+                connectivity = atoi(optarg);
+                if (connectivity != 4 && connectivity != 8) {
+                    fprintf(stderr, "Error: Connectivity must be 4 or 8\n");
+                    return 1;
+                }
+                break;
             case 'd':
                 dark_mode = true;
                 break;
@@ -160,6 +170,42 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Error: No input image specified\n");
         fprintf(stderr, "Try '%s --help' for more information.\n", argv[0]);
         return 1;
+    }
+
+    // Handle connectivity mode separately
+    if (connectivity > 0) {
+        grayscale_image_t gray_original = load_image_as_grayscale(input_file);
+        if (gray_original.data == NULL) {
+            // Try loading as RGB and converting
+            rgb_image_t rgb_original = load_image_as_rgb(input_file);
+            if (rgb_original.r_data == NULL) {
+                return 1; // Already printed error
+            }
+            gray_original = rgb_to_grayscale(&rgb_original);
+            free_rgb_image(&rgb_original);
+        }
+
+        grayscale_image_t components = connected_components(&gray_original, connectivity);
+        free_grayscale_image(&gray_original);
+
+        if (components.data == NULL) {
+            return 1;
+        }
+
+        grayscale_image_t resized = make_resized_grayscale(&components, max_width, max_height, interpolation_method);
+        free(components.data);
+
+        if (resized.data == NULL) {
+            return 1;
+        }
+
+        if (color_mode == COLOR_MODE_NONE) {
+            print_image(&resized, dark_mode);
+        } else {
+            print_grayscale_colored(&resized, dark_mode, color_mode, quantization_levels);
+        }
+        free(resized.data);
+        return 0;
     }
 
     // Redirect output to file if specified
