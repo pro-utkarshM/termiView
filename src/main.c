@@ -185,6 +185,10 @@ int main(int argc, char* argv[]) {
                     filtered = apply_prewitt_edge_detection(&gray_original);
                     to_resize = &filtered;
                     break;
+                case FILTER_EDGE_ROBERTS:
+                    filtered = apply_roberts_edge_detection(&gray_original);
+                    to_resize = &filtered;
+                    break;
                 case FILTER_EDGE_LAPLACIAN:
                     kernel = create_laplacian_kernel();
                     break;
@@ -245,7 +249,7 @@ int main(int argc, char* argv[]) {
         grayscale_image_t* to_print_gray = NULL;
 
         if (filter_type != FILTER_NONE) {
-            if (filter_type == FILTER_EDGE_SOBEL || filter_type == FILTER_EDGE_LAPLACIAN || filter_type == FILTER_EDGE_PREWITT) {
+            if (filter_type == FILTER_EDGE_SOBEL || filter_type == FILTER_EDGE_LAPLACIAN || filter_type == FILTER_EDGE_PREWITT || filter_type == FILTER_EDGE_ROBERTS) {
                 // These filters work on grayscale images
                 grayscale_image_t gray_temp = rgb_to_grayscale(&rgb_original);
                 if (gray_temp.data != NULL) {
@@ -253,6 +257,8 @@ int main(int argc, char* argv[]) {
                         filtered_gray = apply_sobel_edge_detection(&gray_temp);
                     } else if (filter_type == FILTER_EDGE_PREWITT) {
                         filtered_gray = apply_prewitt_edge_detection(&gray_temp);
+                    } else if (filter_type == FILTER_EDGE_ROBERTS) {
+                        filtered_gray = apply_roberts_edge_detection(&gray_temp);
                     } else { // LAPLACIAN
                         kernel_t kernel = create_laplacian_kernel();
                         filtered_gray = apply_convolution_grayscale(&gray_temp, &kernel);

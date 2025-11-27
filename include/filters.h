@@ -5,18 +5,6 @@
 #include <stddef.h>
 
 /**
- * Filter types supported by TermiView
- */
-typedef enum {
-    FILTER_NONE,
-    FILTER_BLUR,
-    FILTER_SHARPEN,
-    FILTER_EDGE_SOBEL,
-    FILTER_EDGE_PREWITT,
-    FILTER_EDGE_LAPLACIAN
-} filter_type_t;
-
-/**
  * Represents a convolution kernel
  */
 typedef struct {
@@ -25,6 +13,19 @@ typedef struct {
     float divisor;      // Normalization divisor
     float offset;       // Offset to add after convolution
 } kernel_t;
+
+/**
+ * Filter types supported by TermiView
+ */
+typedef enum {
+    FILTER_NONE,
+    FILTER_BLUR,
+    FILTER_SHARPEN,
+    FILTER_EDGE_SOBEL,
+    FILTER_EDGE_PREWITT,
+    FILTER_EDGE_ROBERTS,
+    FILTER_EDGE_LAPLACIAN
+} filter_type_t;
 
 /**
  * Apply a convolution kernel to a grayscale image
@@ -49,6 +50,12 @@ grayscale_image_t apply_sobel_edge_detection(const grayscale_image_t* image);
  * Returns a new image with the filter applied
  */
 grayscale_image_t apply_prewitt_edge_detection(const grayscale_image_t* image);
+
+/**
+ * Apply Roberts Cross edge detection to a grayscale image
+ * Returns a new image with the filter applied
+ */
+grayscale_image_t apply_roberts_edge_detection(const grayscale_image_t* image);
 
 /**
  * Create a Gaussian blur kernel
@@ -81,6 +88,16 @@ kernel_t create_prewitt_x_kernel(void);
  * Create a Prewitt edge detection kernel (vertical)
  */
 kernel_t create_prewitt_y_kernel(void);
+
+/**
+ * Create a Roberts Cross edge detection kernel (horizontal)
+ */
+kernel_t create_roberts_x_kernel(void);
+
+/**
+ * Create a Roberts Cross edge detection kernel (vertical)
+ */
+kernel_t create_roberts_y_kernel(void);
 
 /**
  * Create a Laplacian edge detection kernel
