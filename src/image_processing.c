@@ -284,6 +284,50 @@ grayscale_image_t rgb_to_grayscale(rgb_image_t* rgb) {
     };
 }
 
+void calculate_histogram(const grayscale_image_t* image, int* histogram) {
+    // Initialize histogram to zeros
+    for (int i = 0; i < 256; i++) {
+        histogram[i] = 0;
+    }
+
+    // Populate histogram
+    size_t num_pixels = image->width * image->height;
+    for (size_t i = 0; i < num_pixels; i++) {
+        histogram[image->data[i]]++;
+    }
+}
+
+void equalize_histogram(grayscale_image_t* image) {
+    int histogram[256];
+    calculate_histogram(image, histogram);
+
+    size_t num_pixels = image->width * image->height;
+    int cdf[256];
+    cdf[0] = histogram[0];
+    for (int i = 1; i < 256; i++) {
+        cdf[i] = cdf[i-1] + histogram[i];
+    }
+
+    // Find min non-zero CDF value
+    int cdf_min = 0;
+    for (int i = 0; i < 256; i++) {
+        if (cdf[i] > 0) {
+            cdf_min = cdf[i];
+            break;
+        }
+    }
+
+    if (cdf_min == 0) { // All pixels are the same or image is empty
+        return;
+    }
+
+    // Apply equalization formula: h(v) = round(((cdf(v) - cdf_min) / (M*N - cdf_min)) * (L-1))
+    // where L-1 = 255
+    for (size_t i = 0; i < num_pixels; i++) {
+        image->data[i] = (unsigned char)round(((double)cdf[image->data[i]] - cdf_min) / (num_pixels - cdf_min) * 255.0);
+    }
+}
+
 // Disjoint Set Union (DSU) implementation
 typedef struct {
     int* parent;

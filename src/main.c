@@ -26,6 +26,7 @@ void print_usage(const char* program_name) {
     printf("  -F, --dft              Compute and display the 2D DFT magnitude spectrum\n");
     printf("  -D, --dct              Compute and display the 2D DCT magnitude spectrum\n");
     printf("  -W, --dwt              Compute and display the 2D DWT magnitude spectrum\n");
+    printf("  -E, --equalize         Apply histogram equalization to grayscale images\n");
     printf("  -d, --dark             Use dark mode (default)\n");
     printf("  -l, --light            Use light mode\n");
     printf("  -o, --output <file>    Save output to file instead of stdout\n");
@@ -78,6 +79,7 @@ int main(int argc, char* argv[]) {
     bool dft_mode = false;
     bool dct_mode = false;
     bool dwt_mode = false;
+    bool equalize_mode = false;
     float noise_density = 0.0f;
 
     // Long options
@@ -92,6 +94,7 @@ int main(int argc, char* argv[]) {
         {"dft",     no_argument,       0, 'F'},
         {"dct",     no_argument,       0, 'D'},
         {"dwt",     no_argument,       0, 'W'},
+        {"equalize", no_argument,      0, 'E'},
         {"dark",    no_argument,       0, 'd'},
         {"light",   no_argument,       0, 'l'},
         {"output",  required_argument, 0, 'o'},
@@ -105,7 +108,7 @@ int main(int argc, char* argv[]) {
     // Parse options
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "w:h:c:L:q:i:C:FdDWlo:f:N:v", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "w:h:c:L:q:i:C:FdDWElo:f:N:v", long_options, &option_index)) != -1) {
         switch (opt) {
             case 0:
                 // Long option with no short equivalent
@@ -170,6 +173,9 @@ int main(int argc, char* argv[]) {
                 break;
             case 'W':
                 dwt_mode = true;
+                break;
+            case 'E':
+                equalize_mode = true;
                 break;
             case 'd':
                 dark_mode = true;
@@ -375,6 +381,10 @@ int main(int argc, char* argv[]) {
                 stdout = original_stdout;
             }
             return 1;
+        }
+
+        if (equalize_mode) {
+            equalize_histogram(&gray_original);
         }
 
         // Apply filter if specified

@@ -42,6 +42,9 @@ grayscale_image_t apply_salt_pepper_noise(const grayscale_image_t* original, flo
 
 void quantize_grayscale(unsigned char* image, int width, int height, int levels);
 
+void calculate_histogram(const grayscale_image_t* image, int* histogram);
+void equalize_histogram(grayscale_image_t* image);
+
 grayscale_image_t connected_components(grayscale_image_t* image, int connectivity);
 
 #endif

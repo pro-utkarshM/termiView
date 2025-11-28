@@ -2,6 +2,55 @@
 #include "image_processing.h"
 #include <stdlib.h>
 
+char *test_equalize_histogram() {
+    int width = 2;
+    int height = 2;
+    size_t num_pixels = width * height;
+    unsigned char *image_data = malloc(num_pixels * sizeof(unsigned char));
+    image_data[0] = 0;
+    image_data[1] = 64;
+    image_data[2] = 128;
+    image_data[3] = 192;
+
+    grayscale_image_t image = {
+        .width = (size_t)width,
+        .height = (size_t)height,
+        .data = image_data
+    };
+
+    equalize_histogram(&image);
+
+    mu_assert_int_eq(0, image.data[0]);
+    mu_assert_int_eq(85, image.data[1]);
+    mu_assert_int_eq(170, image.data[2]);
+    mu_assert_int_eq(255, image.data[3]);
+
+    free(image_data);
+    return 0;
+}
+
+char *test_calculate_histogram() {
+    int width = 2;
+    int height = 2;
+    unsigned char image_data[] = {10, 20, 10, 30};
+    grayscale_image_t image = {
+        .width = (size_t)width,
+        .height = (size_t)height,
+        .data = image_data
+    };
+
+    int histogram[256] = {0};
+    calculate_histogram(&image, histogram);
+
+    mu_assert_int_eq(2, histogram[10]);
+    mu_assert_int_eq(1, histogram[20]);
+    mu_assert_int_eq(1, histogram[30]);
+    mu_assert_int_eq(0, histogram[0]); // Check some other values
+    mu_assert_int_eq(0, histogram[255]);
+
+    return 0;
+}
+
 char *test_apply_salt_pepper_noise() {
     srand(0); // Seed for deterministic testing
 
@@ -86,6 +135,8 @@ char *test_quantize_grayscale() {
 char *all_tests() {
     mu_run_test(test_quantize_grayscale);
     mu_run_test(test_apply_salt_pepper_noise);
+    mu_run_test(test_calculate_histogram);
+    mu_run_test(test_equalize_histogram);
     return 0;
 }
 

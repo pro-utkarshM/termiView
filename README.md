@@ -164,6 +164,7 @@ Options:
   -F, --dft              Compute and display the 2D DFT magnitude spectrum
   -D, --dct              Compute and display the 2D DCT magnitude spectrum
   -W, --dwt              Compute and display the 2D DWT magnitude spectrum
+  -E, --equalize         Apply histogram equalization to grayscale images
   -v, --version          Show version information
   --help                 Show this help message
 ```
@@ -238,6 +239,11 @@ termiView --dwt image.jpg
 **Quantize a grayscale image:**
 ```bash
 termiView --quantize 8 image.jpg
+```
+
+**Apply histogram equalization:**
+```bash
+termiView --equalize image.jpg
 ```
 
 **Laplacian edge detection in grayscale:**
@@ -359,7 +365,7 @@ TermiView aims to serve as a **complete educational implementation** of image an
 * [x] DWT implementation
 
 **Unit 2 - Processing Techniques:**
-* [ ] Histogram equalization and processing
+* [x] Histogram equalization and processing
 * [x] Complete spatial filter library
 * [ ] Frequency domain filtering
 * [x] Advanced edge detection (Prewitt, Roberts)
@@ -394,7 +400,11 @@ TermiView aims to serve as a **complete educational implementation** of image an
 
 ## Version History
 
-### v0.6.0 - Unit 1 Complete: Transforms (Current)
+### v0.7.0 - Unit 2: Histogram Processing (Current)
+- ✅ Grayscale Histogram Equalization (`--equalize`)
+- ✅ Unit tests for histogram functions
+
+### v0.6.0 - Unit 1 Complete: Transforms
 - ✅ 2D Discrete Cosine Transform (DCT)
 - ✅ 2D Discrete Wavelet Transform (DWT)
 - ✅ Unit tests for all transforms
