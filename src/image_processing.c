@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define LEVEL_CHARS " .-=+*x#$&X@"
 #define N_LEVELS 12
@@ -427,6 +428,36 @@ grayscale_image_t connected_components(grayscale_image_t* image, int connectivit
     dsu_free(dsu);
 
     return result;
+}
+
+grayscale_image_t apply_salt_pepper_noise(const grayscale_image_t* original, float density) {
+    grayscale_image_t noisy_image;
+    noisy_image.width = original->width;
+    noisy_image.height = original->height;
+    size_t num_pixels = original->width * original->height;
+    noisy_image.data = (unsigned char*)malloc(num_pixels);
+
+    if (noisy_image.data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for noisy image\n");
+        return (grayscale_image_t) { .width = 0, .height = 0, .data = NULL };
+    }
+
+    // Initialize random seed (should be done once per program execution)
+    // srand(time(NULL));
+
+    for (size_t i = 0; i < num_pixels; i++) {
+        float r = (float)rand() / (float)RAND_MAX; // Random float between 0.0 and 1.0
+
+        if (r < density / 2.0f) {
+            noisy_image.data[i] = 0;   // Salt (black)
+        } else if (r > 1.0f - (density / 2.0f)) {
+            noisy_image.data[i] = 255; // Pepper (white)
+        } else {
+            noisy_image.data[i] = original->data[i]; // Keep original
+        }
+    }
+
+    return noisy_image;
 }
 
 void quantize_grayscale(unsigned char* image, int width, int height, int levels) {

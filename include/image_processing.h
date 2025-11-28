@@ -38,6 +38,8 @@ void free_rgb_image(rgb_image_t* image);
 
 grayscale_image_t rgb_to_grayscale(rgb_image_t* rgb);
 
+grayscale_image_t apply_salt_pepper_noise(const grayscale_image_t* original, float density);
+
 void quantize_grayscale(unsigned char* image, int width, int height, int levels);
 
 grayscale_image_t connected_components(grayscale_image_t* image, int connectivity);

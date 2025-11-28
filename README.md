@@ -158,7 +158,9 @@ Options:
   -d, --dark             Use dark mode (default)
   -l, --light            Use light mode
   -o, --output <file>    Save output to file instead of stdout
-  -f, --filter <type>    Apply filter: blur, sharpen, sobel, prewitt, roberts, laplacian (default: none)
+  -f, --filter <type>    Apply filter: blur, sharpen, sobel, prewitt, roberts, laplacian, salt-pepper (default: none)
+  -q, --quantize <n>     Number of grayscale quantization levels (2-256)
+  -N, --noise <density>  Apply salt-and-pepper noise (density: 0.0-1.0)
   -v, --version          Show version information
   --help                 Show this help message
 ```
@@ -213,6 +215,16 @@ termiView --filter prewitt image.jpg -w 80 -h 60
 **Edge detection with Roberts Cross operator:**
 ```bash
 termiView --filter roberts image.jpg -w 80 -h 60
+```
+
+**Apply salt-and-pepper noise:**
+```bash
+termiView --filter salt-pepper --noise 0.1 image.jpg
+```
+
+**Quantize a grayscale image:**
+```bash
+termiView --quantize 8 image.jpg
 ```
 
 **Laplacian edge detection in grayscale:**
@@ -327,15 +339,15 @@ TermiView aims to serve as a **complete educational implementation** of image an
 * [x] Convolution engine for image processing
 
 **Unit 1 - Fundamentals:**
-* [ ] Sampling and quantization demonstrations
-* [ ] Pixel relationship operations
-* [ ] 2D DFT implementation and visualization
+* [x] Sampling and quantization demonstrations
+* [x] Pixel relationship operations
+* [x] 2D DFT implementation and visualization
 * [ ] DCT implementation
 * [ ] DWT implementation
 
 **Unit 2 - Processing Techniques:**
 * [ ] Histogram equalization and processing
-* [ ] Complete spatial filter library
+* [x] Complete spatial filter library
 * [ ] Frequency domain filtering
 * [x] Advanced edge detection (Prewitt, Roberts)
 * [ ] Advanced edge detection (Canny)
@@ -369,7 +381,12 @@ TermiView aims to serve as a **complete educational implementation** of image an
 
 ## Version History
 
-### v0.4.0 - Phase 2: Advanced Edge Detection (Current)
+### v0.5.0 - Phase 2: Quantization & Noise (Current)
+- ✅ Grayscale quantization (`--quantize`)
+- ✅ Salt-and-pepper noise filter (`--noise`)
+- ✅ Unit testing framework and initial tests
+
+### v0.4.0 - Phase 2: Advanced Edge Detection
 - ✅ Sobel edge detection (gradient magnitude)
 - ✅ Prewitt edge detection filter
 - ✅ Roberts Cross edge detection filter

@@ -27,7 +27,8 @@ void print_usage(const char* program_name) {
     printf("  -d, --dark             Use dark mode (default)\n");
     printf("  -l, --light            Use light mode\n");
     printf("  -o, --output <file>    Save output to file instead of stdout\n");
-    printf("  -f, --filter <type>    Apply filter: blur, sharpen, sobel, laplacian (default: none)\n");
+    printf("  -f, --filter <type>    Apply filter: blur, sharpen, sobel, laplacian, salt-pepper (default: none)\n");
+    printf("  -N, --noise <density>  Apply salt-and-pepper noise (density: 0.0-1.0)\n");
     printf("  -v, --version          Show version information\n");
     printf("  --help                 Show this help message\n\n");
     printf("Examples:\n");
@@ -73,6 +74,7 @@ int main(int argc, char* argv[]) {
     interpolation_method_t interpolation_method = INTERPOLATION_AVERAGE;
     int connectivity = 0;
     bool dft_mode = false;
+    float noise_density = 0.0f;
 
     // Long options
     static struct option long_options[] = {
@@ -88,6 +90,7 @@ int main(int argc, char* argv[]) {
         {"light",   no_argument,       0, 'l'},
         {"output",  required_argument, 0, 'o'},
         {"filter",  required_argument, 0, 'f'},
+        {"noise",   required_argument, 0, 'N'},
         {"version", no_argument,       0, 'v'},
         {"help",    no_argument,       0,  0 },
         {0, 0, 0, 0}
@@ -96,7 +99,7 @@ int main(int argc, char* argv[]) {
     // Parse options
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "w:h:c:L:q:i:C:Fdlo:f:v", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "w:h:c:L:q:i:C:Fdlo:f:N:v", long_options, &option_index)) != -1) {
         switch (opt) {
             case 0:
                 // Long option with no short equivalent
@@ -167,6 +170,13 @@ int main(int argc, char* argv[]) {
                 break;
             case 'f':
                 filter_type = parse_filter_type(optarg);
+                break;
+            case 'N':
+                noise_density = atof(optarg);
+                if (noise_density < 0.0f || noise_density > 1.0f) {
+                    fprintf(stderr, "Error: Noise density must be between 0.0 and 1.0\n");
+                    return 1;
+                }
                 break;
             case 'v':
                 print_version();
@@ -313,6 +323,10 @@ int main(int argc, char* argv[]) {
                 case FILTER_EDGE_LAPLACIAN:
                     kernel = create_laplacian_kernel();
                     break;
+                case FILTER_SALT_PEPPER:
+                    filtered = apply_salt_pepper_noise(&gray_original, noise_density);
+                    to_resize = &filtered;
+                    break;
                 default:
                     break;
             }
@@ -323,8 +337,8 @@ int main(int argc, char* argv[]) {
                 if (filtered.data != NULL) {
                     to_resize = &filtered;
                 }
-            } else if (filter_type == FILTER_EDGE_SOBEL && filtered.data == NULL) {
-                // Sobel failed, so we should not proceed
+            } else if ((filter_type == FILTER_EDGE_SOBEL || filter_type == FILTER_SALT_PEPPER) && filtered.data == NULL) {
+                // Sobel or Salt-Pepper failed, so we should not proceed
                 to_resize = NULL;
             }
         }
@@ -403,6 +417,15 @@ int main(int argc, char* argv[]) {
                         break;
                     case FILTER_SHARPEN:
                         kernel = create_sharpen_kernel();
+                        break;
+                    case FILTER_SALT_PEPPER:
+                        // Apply to grayscale conversion of RGB image
+                        grayscale_image_t gray_temp = rgb_to_grayscale(&rgb_original);
+                        if (gray_temp.data != NULL) {
+                            filtered_gray = apply_salt_pepper_noise(&gray_temp, noise_density);
+                            free(gray_temp.data);
+                            to_print_gray = &filtered_gray;
+                        }
                         break;
                     default:
                         break;

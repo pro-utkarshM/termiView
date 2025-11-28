@@ -517,6 +517,8 @@ filter_type_t parse_filter_type(const char* filter_str) {
         return FILTER_EDGE_ROBERTS;
     } else if (strcmp(filter_str, "laplacian") == 0 || strcmp(filter_str, "edge-laplacian") == 0) {
         return FILTER_EDGE_LAPLACIAN;
+    } else if (strcmp(filter_str, "salt-pepper") == 0) {
+        return FILTER_SALT_PEPPER;
     } else if (strcmp(filter_str, "none") == 0) {
         return FILTER_NONE;
     } else {
