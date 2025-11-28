@@ -30,8 +30,9 @@ void print_usage(const char* program_name) {
     printf("  -d, --dark             Use dark mode (default)\n");
     printf("  -l, --light            Use light mode\n");
     printf("  -o, --output <file>    Save output to file instead of stdout\n");
-    printf("  -f, --filter <type>    Apply filter: blur, sharpen, sobel, laplacian, salt-pepper (default: none)\n");
+    printf("  -f, --filter <type>    Apply filter: blur, sharpen, sobel, laplacian, salt-pepper, ideal-lowpass, ideal-highpass, gaussian-lowpass, gaussian-highpass (default: none)\n");
     printf("  -N, --noise <density>  Apply salt-and-pepper noise (density: 0.0-1.0)\n");
+    printf("  --cutoff <value>     Cutoff frequency for frequency domain filters (e.g., 20.0)\n");
     printf("  -v, --version          Show version information\n");
     printf("  --help                 Show this help message\n\n");
     printf("Examples:\n");
@@ -81,6 +82,7 @@ int main(int argc, char* argv[]) {
     bool dwt_mode = false;
     bool equalize_mode = false;
     float noise_density = 0.0f;
+    double cutoff = 20.0; // Default cutoff frequency
 
     // Long options
     static struct option long_options[] = {
@@ -102,6 +104,7 @@ int main(int argc, char* argv[]) {
         {"noise",   required_argument, 0, 'N'},
         {"version", no_argument,       0, 'v'},
         {"help",    no_argument,       0,  0 },
+        {"cutoff",  required_argument, 0,  1 },
         {0, 0, 0, 0}
     };
 
@@ -115,6 +118,11 @@ int main(int argc, char* argv[]) {
                 if (strcmp(long_options[option_index].name, "help") == 0) {
                     print_usage(argv[0]);
                     return 0;
+                }
+                break;
+            case 1:
+                if (strcmp(long_options[option_index].name, "cutoff") == 0) {
+                    cutoff = atof(optarg);
                 }
                 break;
             case 'w':
@@ -419,6 +427,13 @@ int main(int argc, char* argv[]) {
                     filtered = apply_salt_pepper_noise(&gray_original, noise_density);
                     to_resize = &filtered;
                     break;
+                case FILTER_IDEAL_LOWPASS:
+                case FILTER_IDEAL_HIGHPASS:
+                case FILTER_GAUSSIAN_LOWPASS:
+                case FILTER_GAUSSIAN_HIGHPASS:
+                    filtered = apply_frequency_filter(&gray_original, filter_type, cutoff);
+                    to_resize = &filtered;
+                    break;
                 default:
                     break;
             }
@@ -516,6 +531,17 @@ int main(int argc, char* argv[]) {
                         if (gray_temp.data != NULL) {
                             filtered_gray = apply_salt_pepper_noise(&gray_temp, noise_density);
                             free(gray_temp.data);
+                            to_print_gray = &filtered_gray;
+                        }
+                        break;
+                    case FILTER_IDEAL_LOWPASS:
+                    case FILTER_IDEAL_HIGHPASS:
+                    case FILTER_GAUSSIAN_LOWPASS:
+                    case FILTER_GAUSSIAN_HIGHPASS:
+                        grayscale_image_t gray_temp2 = rgb_to_grayscale(&rgb_original);
+                        if (gray_temp2.data != NULL) {
+                            filtered_gray = apply_frequency_filter(&gray_temp2, filter_type, cutoff);
+                            free(gray_temp2.data);
                             to_print_gray = &filtered_gray;
                         }
                         break;

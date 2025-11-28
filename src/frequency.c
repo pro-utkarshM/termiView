@@ -264,3 +264,110 @@ grayscale_image_t dwt_grayscale(grayscale_image_t* image) {
     free(temp_data);
     return result;
 }
+
+grayscale_image_t apply_frequency_filter(const grayscale_image_t* image, filter_type_t filter_type, double cutoff) {
+    grayscale_image_t result = {0};
+    if (image == NULL || image->data == NULL) {
+        return result;
+    }
+
+    size_t width = image->width;
+    size_t height = image->height;
+    size_t num_pixels = width * height;
+
+    // 1. Forward DFT
+    fftw_complex* in = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * num_pixels);
+    fftw_complex* out_dft = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * num_pixels);
+
+    if (in == NULL || out_dft == NULL) {
+        fftw_free(in);
+        fftw_free(out_dft);
+        return result;
+    }
+
+    for (size_t i = 0; i < num_pixels; i++) {
+        in[i][0] = (double)image->data[i];
+        in[i][1] = 0.0;
+    }
+
+    fftw_plan plan_forward = fftw_plan_dft_2d(height, width, in, out_dft, FFTW_FORWARD, FFTW_ESTIMATE);
+    fftw_execute(plan_forward);
+    fftw_destroy_plan(plan_forward);
+
+    // 2. Create filter mask
+    double* filter_mask = (double*)malloc(sizeof(double) * num_pixels);
+    if (filter_mask == NULL) {
+        fftw_free(in);
+        fftw_free(out_dft);
+        return result;
+    }
+
+    double cutoff_sq = cutoff * cutoff;
+    for (size_t y = 0; y < height; y++) {
+        for (size_t x = 0; x < width; x++) {
+            double dist_sq = pow(y - height / 2.0, 2) + pow(x - width / 2.0, 2);
+            double filter_value = 0.0;
+
+            switch (filter_type) {
+                case FILTER_IDEAL_LOWPASS:
+                    filter_value = (dist_sq <= cutoff_sq) ? 1.0 : 0.0;
+                    break;
+                case FILTER_IDEAL_HIGHPASS:
+                    filter_value = (dist_sq <= cutoff_sq) ? 0.0 : 1.0;
+                    break;
+                case FILTER_GAUSSIAN_LOWPASS:
+                    filter_value = exp(-dist_sq / (2.0 * cutoff_sq));
+                    break;
+                case FILTER_GAUSSIAN_HIGHPASS:
+                    filter_value = 1.0 - exp(-dist_sq / (2.0 * cutoff_sq));
+                    break;
+                default:
+                    filter_value = 1.0; // Should not happen
+                    break;
+            }
+            filter_mask[y * width + x] = filter_value;
+        }
+    }
+    
+    // Shift the mask so that the DC component is at (0,0)
+    fft_shift(filter_mask, width, height);
+    
+    // 3. Apply filter
+    for (size_t i = 0; i < num_pixels; i++) {
+        out_dft[i][0] *= filter_mask[i];
+        out_dft[i][1] *= filter_mask[i];
+    }
+    free(filter_mask);
+
+    // 4. Inverse DFT
+    fftw_complex* out_idft = (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * num_pixels);
+    if(out_idft == NULL) {
+        fftw_free(in);
+        fftw_free(out_dft);
+        return result;
+    }
+    fftw_plan plan_backward = fftw_plan_dft_2d(height, width, out_dft, out_idft, FFTW_BACKWARD, FFTW_ESTIMATE);
+    fftw_execute(plan_backward);
+    fftw_destroy_plan(plan_backward);
+
+    // 5. Normalize
+    result.width = width;
+    result.height = height;
+    result.data = (unsigned char*)malloc(num_pixels);
+    if (result.data != NULL) {
+        for (size_t i = 0; i < num_pixels; i++) {
+            // Take the real part and normalize by the number of pixels
+            double val = out_idft[i][0] / (double)num_pixels;
+            if (val < 0) val = 0;
+            if (val > 255) val = 255;
+            result.data[i] = (unsigned char)val;
+        }
+    }
+
+    // Cleanup
+    fftw_free(in);
+    fftw_free(out_dft);
+    fftw_free(out_idft);
+
+    return result;
+}

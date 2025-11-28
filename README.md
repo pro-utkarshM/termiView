@@ -158,8 +158,9 @@ Options:
   -d, --dark             Use dark mode (default)
   -l, --light            Use light mode
   -o, --output <file>    Save output to file instead of stdout
-  -f, --filter <type>    Apply filter: blur, sharpen, sobel, prewitt, roberts, laplacian, salt-pepper (default: none)
+  -f, --filter <type>    Apply filter: blur, sharpen, sobel, prewitt, roberts, laplacian, salt-pepper, ideal-lowpass, ideal-highpass, gaussian-lowpass, gaussian-highpass (default: none)
   -q, --quantize <n>     Number of grayscale quantization levels (2-256)
+  --cutoff <value>     Cutoff frequency for frequency domain filters (e.g., 20.0)
   -N, --noise <density>  Apply salt-and-pepper noise (density: 0.0-1.0)
   -F, --dft              Compute and display the 2D DFT magnitude spectrum
   -D, --dct              Compute and display the 2D DCT magnitude spectrum
@@ -244,6 +245,11 @@ termiView --quantize 8 image.jpg
 **Apply histogram equalization:**
 ```bash
 termiView --equalize image.jpg
+```
+
+**Apply a Gaussian low-pass filter:**
+```bash
+termiView --filter gaussian-lowpass --cutoff 15 image.jpg
 ```
 
 **Laplacian edge detection in grayscale:**
@@ -367,7 +373,7 @@ TermiView aims to serve as a **complete educational implementation** of image an
 **Unit 2 - Processing Techniques:**
 * [x] Histogram equalization and processing
 * [x] Complete spatial filter library
-* [ ] Frequency domain filtering
+* [x] Frequency domain filtering
 * [x] Advanced edge detection (Prewitt, Roberts)
 * [ ] Advanced edge detection (Canny)
 * [ ] Thresholding methods (Otsu, adaptive)
@@ -400,7 +406,12 @@ TermiView aims to serve as a **complete educational implementation** of image an
 
 ## Version History
 
-### v0.7.0 - Unit 2: Histogram Processing (Current)
+### v0.8.0 - Unit 2: Frequency Domain Filtering (Current)
+- ✅ Ideal and Gaussian frequency domain filters (low-pass, high-pass)
+- ✅ `--cutoff` option for frequency filters
+- ✅ Unit tests for frequency domain filters
+
+### v0.7.0 - Unit 2: Histogram Processing
 - ✅ Grayscale Histogram Equalization (`--equalize`)
 - ✅ Unit tests for histogram functions
 

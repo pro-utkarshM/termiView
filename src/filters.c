@@ -519,6 +519,14 @@ filter_type_t parse_filter_type(const char* filter_str) {
         return FILTER_EDGE_LAPLACIAN;
     } else if (strcmp(filter_str, "salt-pepper") == 0) {
         return FILTER_SALT_PEPPER;
+    } else if (strcmp(filter_str, "ideal-lowpass") == 0) {
+        return FILTER_IDEAL_LOWPASS;
+    } else if (strcmp(filter_str, "ideal-highpass") == 0) {
+        return FILTER_IDEAL_HIGHPASS;
+    } else if (strcmp(filter_str, "gaussian-lowpass") == 0) {
+        return FILTER_GAUSSIAN_LOWPASS;
+    } else if (strcmp(filter_str, "gaussian-highpass") == 0) {
+        return FILTER_GAUSSIAN_HIGHPASS;
     } else if (strcmp(filter_str, "none") == 0) {
         return FILTER_NONE;
     } else {
