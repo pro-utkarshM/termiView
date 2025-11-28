@@ -24,6 +24,8 @@ void print_usage(const char* program_name) {
     printf("  -i, --interpolation <m> Interpolation method: nearest, average (default: average)\n");
     printf("  -C, --connectivity <t> Find connected components (4 or 8 connectivity)\n");
     printf("  -F, --dft              Compute and display the 2D DFT magnitude spectrum\n");
+    printf("  -D, --dct              Compute and display the 2D DCT magnitude spectrum\n");
+    printf("  -W, --dwt              Compute and display the 2D DWT magnitude spectrum\n");
     printf("  -d, --dark             Use dark mode (default)\n");
     printf("  -l, --light            Use light mode\n");
     printf("  -o, --output <file>    Save output to file instead of stdout\n");
@@ -74,6 +76,8 @@ int main(int argc, char* argv[]) {
     interpolation_method_t interpolation_method = INTERPOLATION_AVERAGE;
     int connectivity = 0;
     bool dft_mode = false;
+    bool dct_mode = false;
+    bool dwt_mode = false;
     float noise_density = 0.0f;
 
     // Long options
@@ -86,6 +90,8 @@ int main(int argc, char* argv[]) {
         {"interpolation", required_argument, 0, 'i'},
         {"connectivity", required_argument, 0, 'C'},
         {"dft",     no_argument,       0, 'F'},
+        {"dct",     no_argument,       0, 'D'},
+        {"dwt",     no_argument,       0, 'W'},
         {"dark",    no_argument,       0, 'd'},
         {"light",   no_argument,       0, 'l'},
         {"output",  required_argument, 0, 'o'},
@@ -99,7 +105,7 @@ int main(int argc, char* argv[]) {
     // Parse options
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "w:h:c:L:q:i:C:Fdlo:f:N:v", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "w:h:c:L:q:i:C:FdDWlo:f:N:v", long_options, &option_index)) != -1) {
         switch (opt) {
             case 0:
                 // Long option with no short equivalent
@@ -158,6 +164,12 @@ int main(int argc, char* argv[]) {
                 break;
             case 'F':
                 dft_mode = true;
+                break;
+            case 'D':
+                dct_mode = true;
+                break;
+            case 'W':
+                dwt_mode = true;
                 break;
             case 'd':
                 dark_mode = true;
@@ -256,6 +268,76 @@ int main(int argc, char* argv[]) {
 
         grayscale_image_t resized = make_resized_grayscale(&dft_image, max_width, max_height, interpolation_method);
         free(dft_image.data);
+
+        if (resized.data == NULL) {
+            return 1;
+        }
+
+        if (color_mode == COLOR_MODE_NONE) {
+            print_image(&resized, dark_mode);
+        } else {
+            print_grayscale_colored(&resized, dark_mode, color_mode, quantization_levels);
+        }
+        free(resized.data);
+        return 0;
+    }
+
+    if (dct_mode) {
+        grayscale_image_t gray_original = load_image_as_grayscale(input_file);
+        if (gray_original.data == NULL) {
+            // Try loading as RGB and converting
+            rgb_image_t rgb_original = load_image_as_rgb(input_file);
+            if (rgb_original.r_data == NULL) {
+                return 1; // Already printed error
+            }
+            gray_original = rgb_to_grayscale(&rgb_original);
+            free_rgb_image(&rgb_original);
+        }
+
+        grayscale_image_t dct_image = dct_grayscale(&gray_original);
+        free_grayscale_image(&gray_original);
+
+        if (dct_image.data == NULL) {
+            return 1;
+        }
+
+        grayscale_image_t resized = make_resized_grayscale(&dct_image, max_width, max_height, interpolation_method);
+        free(dct_image.data);
+
+        if (resized.data == NULL) {
+            return 1;
+        }
+
+        if (color_mode == COLOR_MODE_NONE) {
+            print_image(&resized, dark_mode);
+        } else {
+            print_grayscale_colored(&resized, dark_mode, color_mode, quantization_levels);
+        }
+        free(resized.data);
+        return 0;
+    }
+
+    if (dwt_mode) {
+        grayscale_image_t gray_original = load_image_as_grayscale(input_file);
+        if (gray_original.data == NULL) {
+            // Try loading as RGB and converting
+            rgb_image_t rgb_original = load_image_as_rgb(input_file);
+            if (rgb_original.r_data == NULL) {
+                return 1; // Already printed error
+            }
+            gray_original = rgb_to_grayscale(&rgb_original);
+            free_rgb_image(&rgb_original);
+        }
+
+        grayscale_image_t dwt_image = dwt_grayscale(&gray_original);
+        free_grayscale_image(&gray_original);
+
+        if (dwt_image.data == NULL) {
+            return 1;
+        }
+
+        grayscale_image_t resized = make_resized_grayscale(&dwt_image, max_width, max_height, interpolation_method);
+        free(dwt_image.data);
 
         if (resized.data == NULL) {
             return 1;

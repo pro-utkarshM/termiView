@@ -9,4 +9,8 @@
  */
 grayscale_image_t dft_grayscale(grayscale_image_t* image);
 
+grayscale_image_t dct_grayscale(grayscale_image_t* image);
+
+grayscale_image_t dwt_grayscale(grayscale_image_t* image);
+
 #endif // FREQUENCY_H

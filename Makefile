@@ -51,14 +51,14 @@ uninstall:
 
 # Clean build artifacts
 clean:
-	rm -f $(SRCDIR)/*.o $(TARGET) $(TARGET_DEBUG) tests/image_processing_test
+	rm -f $(SRCDIR)/*.o $(TARGET) $(TARGET_DEBUG) tests/image_processing_test tests/frequency_test
 
 # Clean everything including output files
 distclean: clean
 	rm -f *.txt
 
 # Run tests
-test: test_image_processing
+test: test_image_processing test_frequency
 	@echo "Running basic integration tests..."
 	@./$(TARGET) --version
 	@./$(TARGET) --help > /dev/null
@@ -69,4 +69,8 @@ test_image_processing: src/image_processing.o
 	$(CC) $(CFLAGS) -Itests tests/image_processing_test.c src/image_processing.o -o tests/image_processing_test $(LDFLAGS)
 	@./tests/image_processing_test
 
-.PHONY: all debug install uninstall clean distclean test test_image_processing
+test_frequency: src/frequency.o src/image_processing.o
+	$(CC) $(CFLAGS) -Itests tests/frequency_test.c src/frequency.o src/image_processing.o -o tests/frequency_test $(LDFLAGS)
+	@./tests/frequency_test
+
+.PHONY: all debug install uninstall clean distclean test test_image_processing test_frequency

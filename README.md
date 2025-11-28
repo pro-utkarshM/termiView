@@ -161,6 +161,9 @@ Options:
   -f, --filter <type>    Apply filter: blur, sharpen, sobel, prewitt, roberts, laplacian, salt-pepper (default: none)
   -q, --quantize <n>     Number of grayscale quantization levels (2-256)
   -N, --noise <density>  Apply salt-and-pepper noise (density: 0.0-1.0)
+  -F, --dft              Compute and display the 2D DFT magnitude spectrum
+  -D, --dct              Compute and display the 2D DCT magnitude spectrum
+  -W, --dwt              Compute and display the 2D DWT magnitude spectrum
   -v, --version          Show version information
   --help                 Show this help message
 ```
@@ -220,6 +223,16 @@ termiView --filter roberts image.jpg -w 80 -h 60
 **Apply salt-and-pepper noise:**
 ```bash
 termiView --filter salt-pepper --noise 0.1 image.jpg
+```
+
+**Compute the 2D DCT of an image:**
+```bash
+termiView --dct image.jpg
+```
+
+**Compute the 2D DWT of an image:**
+```bash
+termiView --dwt image.jpg
 ```
 
 **Quantize a grayscale image:**
@@ -342,8 +355,8 @@ TermiView aims to serve as a **complete educational implementation** of image an
 * [x] Sampling and quantization demonstrations
 * [x] Pixel relationship operations
 * [x] 2D DFT implementation and visualization
-* [ ] DCT implementation
-* [ ] DWT implementation
+* [x] DCT implementation
+* [x] DWT implementation
 
 **Unit 2 - Processing Techniques:**
 * [ ] Histogram equalization and processing
@@ -381,7 +394,12 @@ TermiView aims to serve as a **complete educational implementation** of image an
 
 ## Version History
 
-### v0.5.0 - Phase 2: Quantization & Noise (Current)
+### v0.6.0 - Unit 1 Complete: Transforms (Current)
+- ✅ 2D Discrete Cosine Transform (DCT)
+- ✅ 2D Discrete Wavelet Transform (DWT)
+- ✅ Unit tests for all transforms
+
+### v0.5.0 - Phase 2: Quantization & Noise
 - ✅ Grayscale quantization (`--quantize`)
 - ✅ Salt-and-pepper noise filter (`--noise`)
 - ✅ Unit testing framework and initial tests
