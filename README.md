@@ -14,8 +14,6 @@ Starting with **colorized ASCII art rendering**, TermiView is evolving into a **
 
 ## Features
 
-### ✅ Implemented
-
 #### Phase 1: Foundation & Color (Complete)
 - **ASCII Renderer** – Convert images into ASCII art with adjustable resolution
 - **Colorized Output** – Full color support with multiple modes:
@@ -39,8 +37,6 @@ Starting with **colorized ASCII art rendering**, TermiView is evolving into a **
 - **Roberts Cross Edge Detection** – Diagonal edge detection
 - **Laplacian Edge Detection** – Omnidirectional edge detection
 - **Filter Integration** – Seamlessly apply filters before ASCII conversion
-
-### 🚧 Planned (Curriculum-Based Roadmap)
 
 #### Unit 1: Fundamentals of Image Processing
 - **Sampling and Quantization** – Demonstrate aliasing, resolution effects
@@ -132,7 +128,7 @@ sudo make install
 
 * **GCC / Clang** – C compiler
 * **stb_image.h** – Image loading (included)
-* **FFTW** – For Fourier transforms *(optional, for future features)*
+* **FFTW** – For Fourier transforms
 
 ---
 
@@ -187,59 +183,14 @@ termiView/
 
 ---
 
-## Learning Goals
 
-TermiView aims to serve as a **complete educational implementation** of image and video processing fundamentals, covering a full university-level curriculum in computer vision and multimedia processing.
+> For the goals of this project, please refer to [GOALS.md](GOALS.md)
 
-**Educational Coverage:**
+> For the detailed project roadmap, please refer to [TODO.md](TODO.md).
 
-**Unit 1 - Fundamentals:**
-- Image representation and digitization
-- Sampling theory and quantization effects
-- Transform domain analysis (DFT, DCT, DWT)
-- Frequency domain concepts
-
-**Unit 2 - Processing Techniques:**
-- Spatial domain enhancement (histogram, filtering)
-- Frequency domain enhancement (spectral filtering)
-- Image segmentation (edges, regions, thresholding)
-- Feature detection and extraction
-
-**Unit 3 - Compression:**
-- Information theory and redundancy
-- Lossless compression (Huffman, LZW, RLE)
-- Lossy compression (transform, predictive, wavelet)
-- JPEG standard implementation
-
-**Unit 4 - Video Fundamentals:**
-- Video signal representation
-- Motion models and image formation
-- Temporal processing and filtering
-- Video sampling and reconstruction
-
-**Unit 5 - Motion & Video Coding:**
-- Motion estimation algorithms
-- Optical flow computation
-- Video compression techniques
-- Modern video coding standards
-
-**Learning Approach:**
-- ✅ **Practical Implementation** - Working code for every algorithm
-- ✅ **Visual Feedback** - ASCII/terminal visualization of results
-- ✅ **Modular Design** - Study individual components independently
-- ✅ **Educational Comments** - Well-documented code explaining theory
-- ✅ **Progressive Complexity** - Build from basics to advanced topics
+> For detailed version history, please refer to [VERSION.md](VERSION.md).
 
 ---
-
-For the detailed project roadmap, please refer to [TODO.md](TODO.md).
-
----
-
-For detailed version history, please refer to [VERSION.md](VERSION.md).
-
----
-
 ## Contributing
 
 Contributions are welcome! If you're learning signal processing or graphics programming, this is a great place to experiment and contribute.
@@ -249,12 +200,6 @@ git checkout -b feature/your-feature
 git commit -m "Add new filter or feature"
 git push origin feature/your-feature
 ```
-
----
-
-## License
-
-This project is open source. Feel free to use, modify, and distribute.
 
 ---
 
