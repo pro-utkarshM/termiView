@@ -2,7 +2,8 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Wno-unused-parameter -std=c99 -Iinclude
 CFLAGS_DEBUG = $(CFLAGS) -g -DDEBUG
 CFLAGS_RELEASE = $(CFLAGS) -O2
-LDFLAGS = -lm
+FFTW_LIBS = $(shell pkg-config --libs fftw3)
+LDFLAGS = -lm $(FFTW_LIBS)
 
 SRCDIR = src
 INCDIR = include
@@ -50,18 +51,22 @@ uninstall:
 
 # Clean build artifacts
 clean:
-	rm -f $(SRCDIR)/*.o $(TARGET) $(TARGET_DEBUG)
+	rm -f $(SRCDIR)/*.o $(TARGET) $(TARGET_DEBUG) tests/image_processing_test
 
 # Clean everything including output files
 distclean: clean
 	rm -f *.txt
 
 # Run tests
-test: $(TARGET)
-	@echo "Running basic tests..."
+test: test_image_processing
+	@echo "Running basic integration tests..."
 	@./$(TARGET) --version
 	@./$(TARGET) --help > /dev/null
 	@./$(TARGET) assets/kitty.jpeg -w 40 -h 20 -o test_output.txt
-	@echo "Tests passed!"
+	@echo "Integration tests passed!"
 
-.PHONY: all debug install uninstall clean distclean test
+test_image_processing: src/image_processing.o
+	$(CC) $(CFLAGS) -Itests tests/image_processing_test.c src/image_processing.o -o tests/image_processing_test $(LDFLAGS)
+	@./tests/image_processing_test
+
+.PHONY: all debug install uninstall clean distclean test test_image_processing

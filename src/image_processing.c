@@ -428,3 +428,22 @@ grayscale_image_t connected_components(grayscale_image_t* image, int connectivit
 
     return result;
 }
+
+void quantize_grayscale(unsigned char* image, int width, int height, int levels) {
+    if (levels <= 1) {
+        return; // Nothing to do
+    }
+    if (levels > 256) {
+        levels = 256;
+    }
+
+    int step = 256 / levels;
+    for (int i = 0; i < width * height; i++) {
+        int original_value = image[i];
+        int quantized_value = (original_value / step) * step + (step / 2);
+        if (quantized_value > 255) {
+            quantized_value = 255;
+        }
+        image[i] = (unsigned char)quantized_value;
+    }
+}

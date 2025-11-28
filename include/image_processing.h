@@ -38,6 +38,8 @@ void free_rgb_image(rgb_image_t* image);
 
 grayscale_image_t rgb_to_grayscale(rgb_image_t* rgb);
 
+void quantize_grayscale(unsigned char* image, int width, int height, int levels);
+
 grayscale_image_t connected_components(grayscale_image_t* image, int connectivity);
 
 #endif

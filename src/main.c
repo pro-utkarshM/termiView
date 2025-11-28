@@ -6,6 +6,7 @@
 #include "../include/image_processing.h"
 #include "../include/color_output.h"
 #include "../include/filters.h"
+#include "../include/frequency.h"
 
 #define VERSION "0.3.0"
 #define DEFAULT_MAX_WIDTH 64
@@ -19,8 +20,10 @@ void print_usage(const char* program_name) {
     printf("  -h, --height <num>     Maximum height in characters (default: %d)\n", DEFAULT_MAX_HEIGHT);
     printf("  -c, --color <mode>     Color mode: none, 16, 256, truecolor (default: truecolor)\n");
     printf("  -L, --levels <n>       Number of quantization levels per channel (2-256, for truecolor mode)\n");
+    printf("  -q, --quantize <n>     Number of grayscale quantization levels (2-256)\n");
     printf("  -i, --interpolation <m> Interpolation method: nearest, average (default: average)\n");
     printf("  -C, --connectivity <t> Find connected components (4 or 8 connectivity)\n");
+    printf("  -F, --dft              Compute and display the 2D DFT magnitude spectrum\n");
     printf("  -d, --dark             Use dark mode (default)\n");
     printf("  -l, --light            Use light mode\n");
     printf("  -o, --output <file>    Save output to file instead of stdout\n");
@@ -66,8 +69,10 @@ int main(int argc, char* argv[]) {
     char* input_file = NULL;
     filter_type_t filter_type = FILTER_NONE;
     int quantization_levels = 256;
+    int grayscale_quantization_levels = 0;
     interpolation_method_t interpolation_method = INTERPOLATION_AVERAGE;
     int connectivity = 0;
+    bool dft_mode = false;
 
     // Long options
     static struct option long_options[] = {
@@ -75,8 +80,10 @@ int main(int argc, char* argv[]) {
         {"height",  required_argument, 0, 'h'},
         {"color",   required_argument, 0, 'c'},
         {"levels",  required_argument, 0, 'L'},
+        {"quantize", required_argument, 0, 'q'},
         {"interpolation", required_argument, 0, 'i'},
         {"connectivity", required_argument, 0, 'C'},
+        {"dft",     no_argument,       0, 'F'},
         {"dark",    no_argument,       0, 'd'},
         {"light",   no_argument,       0, 'l'},
         {"output",  required_argument, 0, 'o'},
@@ -89,7 +96,7 @@ int main(int argc, char* argv[]) {
     // Parse options
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "w:h:c:L:i:C:dlo:f:v", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "w:h:c:L:q:i:C:Fdlo:f:v", long_options, &option_index)) != -1) {
         switch (opt) {
             case 0:
                 // Long option with no short equivalent
@@ -122,6 +129,13 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
                 break;
+            case 'q':
+                grayscale_quantization_levels = atoi(optarg);
+                if (grayscale_quantization_levels < 2 || grayscale_quantization_levels > 256) {
+                    fprintf(stderr, "Error: Grayscale quantization levels must be between 2 and 256\n");
+                    return 1;
+                }
+                break;
             case 'i':
                 if (strcmp(optarg, "nearest") == 0) {
                     interpolation_method = INTERPOLATION_NEAREST;
@@ -138,6 +152,9 @@ int main(int argc, char* argv[]) {
                     fprintf(stderr, "Error: Connectivity must be 4 or 8\n");
                     return 1;
                 }
+                break;
+            case 'F':
+                dft_mode = true;
                 break;
             case 'd':
                 dark_mode = true;
@@ -194,6 +211,41 @@ int main(int argc, char* argv[]) {
 
         grayscale_image_t resized = make_resized_grayscale(&components, max_width, max_height, interpolation_method);
         free(components.data);
+
+        if (resized.data == NULL) {
+            return 1;
+        }
+
+        if (color_mode == COLOR_MODE_NONE) {
+            print_image(&resized, dark_mode);
+        } else {
+            print_grayscale_colored(&resized, dark_mode, color_mode, quantization_levels);
+        }
+        free(resized.data);
+        return 0;
+    }
+
+    if (dft_mode) {
+        grayscale_image_t gray_original = load_image_as_grayscale(input_file);
+        if (gray_original.data == NULL) {
+            // Try loading as RGB and converting
+            rgb_image_t rgb_original = load_image_as_rgb(input_file);
+            if (rgb_original.r_data == NULL) {
+                return 1; // Already printed error
+            }
+            gray_original = rgb_to_grayscale(&rgb_original);
+            free_rgb_image(&rgb_original);
+        }
+
+        grayscale_image_t dft_image = dft_grayscale(&gray_original);
+        free_grayscale_image(&gray_original);
+
+        if (dft_image.data == NULL) {
+            return 1;
+        }
+
+        grayscale_image_t resized = make_resized_grayscale(&dft_image, max_width, max_height, interpolation_method);
+        free(dft_image.data);
 
         if (resized.data == NULL) {
             return 1;
@@ -288,6 +340,9 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         
+        if (grayscale_quantization_levels > 0) {
+            quantize_grayscale(to_resize->data, to_resize->width, to_resize->height, grayscale_quantization_levels);
+        }
         grayscale_image_t resized = make_resized_grayscale(to_resize, max_width, max_height, interpolation_method);
         if (resized.data == NULL) {
             free_grayscale_image(&gray_original);
