@@ -51,4 +51,6 @@ grayscale_image_t apply_otsu_thresholding(const grayscale_image_t* image);
 
 grayscale_image_t apply_adaptive_thresholding(const grayscale_image_t* image, int block_size, double c);
 
+grayscale_image_t apply_region_growing(const grayscale_image_t* image, int seed_x, int seed_y, int threshold);
+
 #endif

@@ -582,6 +582,130 @@ grayscale_image_t apply_otsu_thresholding(const grayscale_image_t* image) {
     return result;
 }
 
+// Queue structure for region growing
+typedef struct {
+    int x;
+    int y;
+} Point;
+
+typedef struct {
+    Point* data;
+    int head;
+    int tail;
+    int size;
+    int capacity;
+} Queue;
+
+Queue* create_queue(int capacity) {
+    Queue* q = (Queue*)malloc(sizeof(Queue));
+    q->data = (Point*)malloc(sizeof(Point) * capacity);
+    q->head = 0;
+    q->tail = -1;
+    q->size = 0;
+    q->capacity = capacity;
+    return q;
+}
+
+void enqueue(Queue* q, Point p) {
+    if (q->size == q->capacity) {
+        q->capacity *= 2;
+        q->data = (Point*)realloc(q->data, sizeof(Point) * q->capacity);
+    }
+    q->tail = (q->tail + 1) % q->capacity;
+    q->data[q->tail] = p;
+    q->size++;
+}
+
+Point dequeue(Queue* q) {
+    Point p = q->data[q->head];
+    q->head = (q->head + 1) % q->capacity;
+    q->size--;
+    return p;
+}
+
+bool is_empty(Queue* q) {
+    return q->size == 0;
+}
+
+void free_queue(Queue* q) {
+    free(q->data);
+    free(q);
+}
+
+
+grayscale_image_t apply_region_growing(const grayscale_image_t* image, int seed_x, int seed_y, int threshold) {
+    grayscale_image_t result = {0};
+    if (image == NULL || image->data == NULL) {
+        return result;
+    }
+
+    result.width = image->width;
+    result.height = image->height;
+    result.data = (unsigned char*)calloc(image->width * image->height, sizeof(unsigned char));
+    if (result.data == NULL) {
+        result.width = 0;
+        result.height = 0;
+        return result;
+    }
+
+    // Check if seed is valid
+    if (seed_x < 0 || seed_x >= (int)image->width || seed_y < 0 || seed_y >= (int)image->height) {
+        fprintf(stderr, "Error: Invalid seed point for region growing\n");
+        return result;
+    }
+
+    // Create a visited array
+    bool* visited = (bool*)calloc(image->width * image->height, sizeof(bool));
+    if (visited == NULL) {
+        free(result.data);
+        return result;
+    }
+
+    Queue* q = create_queue(100); // Initial queue capacity
+    if (q == NULL) {
+        free(result.data);
+        free(visited);
+        return result;
+    }
+
+    // Add seed to queue and mark as visited
+    Point seed = {seed_x, seed_y};
+    enqueue(q, seed);
+    visited[seed_y * image->width + seed_x] = true;
+    result.data[seed_y * image->width + seed_x] = 255; // Mark seed as part of the region
+
+    unsigned char seed_value = image->data[seed_y * image->width + seed_x];
+
+    // Define 8-connectivity neighbors
+    int dx[] = {-1, -1, -1, 0, 0, 1, 1, 1};
+    int dy[] = {-1, 0, 1, -1, 1, -1, 0, 1};
+
+    while (!is_empty(q)) {
+        Point current = dequeue(q);
+
+        for (int i = 0; i < 8; i++) {
+            int nx = current.x + dx[i];
+            int ny = current.y + dy[i];
+
+            if (nx >= 0 && nx < (int)image->width && ny >= 0 && ny < (int)image->height &&
+                !visited[ny * image->width + nx]) {
+                
+                unsigned char neighbor_value = image->data[ny * image->width + nx];
+                if (abs(neighbor_value - seed_value) <= threshold) {
+                    visited[ny * image->width + nx] = true;
+                    result.data[ny * image->width + nx] = 255; // Mark as part of the region
+                    enqueue(q, (Point){nx, ny});
+                }
+            }
+        }
+    }
+
+    free_queue(q);
+    free(visited);
+
+    return result;
+}
+
 grayscale_image_t apply_adaptive_thresholding(const grayscale_image_t* image, int block_size, double c) {
     grayscale_image_t result = {0};
     if (image == NULL || image->data == NULL) {

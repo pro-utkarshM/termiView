@@ -24,7 +24,7 @@
 * [x] Advanced edge detection (Prewitt, Roberts)
 * [x] Advanced edge detection (Canny)
 * [x] Thresholding methods (Otsu, adaptive)
-* [ ] Region-based segmentation
+* [x] Region-based segmentation
 
 **Unit 3 - Compression:**
 * [ ] Huffman coding

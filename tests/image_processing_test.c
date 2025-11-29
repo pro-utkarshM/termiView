@@ -1,9 +1,11 @@
 #include "minunit.h"
 #include "image_processing.h"
 #include <stdlib.h>
+#include <string.h>
 
 char *test_otsu_thresholding();
 char *test_adaptive_thresholding();
+char *test_region_growing();
 
 char *test_equalize_histogram() {
     int width = 2;
@@ -177,6 +179,56 @@ char *all_tests() {
     mu_run_test(test_equalize_histogram);
     mu_run_test(test_otsu_thresholding);
     mu_run_test(test_adaptive_thresholding);
+    mu_run_test(test_region_growing);
+    return 0;
+}
+
+char *test_region_growing() {
+    int width = 5;
+    int height = 5;
+    size_t num_pixels = width * height;
+    unsigned char *image_data = malloc(num_pixels * sizeof(unsigned char));
+
+    // Create a simple image with a brighter square in the middle
+    // 0 0 0 0 0
+    // 0 50 50 50 0
+    // 0 50 50 50 0
+    // 0 50 50 50 0
+    // 0 0 0 0 0
+    memset(image_data, 0, num_pixels); // Initialize all to black
+    for (int y = 1; y < 4; y++) {
+        for (int x = 1; x < 4; x++) {
+            image_data[y * width + x] = 50;
+        }
+    }
+
+    grayscale_image_t image = {
+        .width = (size_t)width,
+        .height = (size_t)height,
+        .data = image_data
+    };
+
+    // Seed in the middle of the square, threshold 10 to grow only similar pixels
+    grayscale_image_t segmented_image = apply_region_growing(&image, 2, 2, 10);
+
+    // Assert that the output image is not null
+    mu_assert("Region growing image data is null", segmented_image.data != NULL);
+
+    // Check pixels within the square (should be white)
+    for (int y = 1; y < 4; y++) {
+        for (int x = 1; x < 4; x++) {
+            mu_assert("Region growing: pixel in square should be white", segmented_image.data[y * width + x] == 255);
+        }
+    }
+
+    // Check pixels outside the square (should be black)
+    mu_assert("Region growing: pixel (0,0) should be black", segmented_image.data[0] == 0);
+    mu_assert("Region growing: pixel (4,0) should be black", segmented_image.data[4] == 0);
+    mu_assert("Region growing: pixel (0,4) should be black", segmented_image.data[num_pixels-width] == 0);
+    mu_assert("Region growing: pixel (4,4) should be black", segmented_image.data[num_pixels-1] == 0);
+
+    free(image_data);
+    free(segmented_image.data);
     return 0;
 }
 
