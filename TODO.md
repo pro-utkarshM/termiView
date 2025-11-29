@@ -27,7 +27,7 @@
 * [x] Region-based segmentation
 
 **Unit 3 - Compression:**
-* [ ] Huffman coding
+* [x] Huffman coding
 * [ ] Arithmetic coding
 * [ ] LZW compression
 * [ ] Run-length encoding
