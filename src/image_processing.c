@@ -522,3 +522,62 @@ void quantize_grayscale(unsigned char* image, int width, int height, int levels)
         image[i] = (unsigned char)quantized_value;
     }
 }
+
+grayscale_image_t apply_otsu_thresholding(const grayscale_image_t* image) {
+    grayscale_image_t result = {0};
+    if (image == NULL || image->data == NULL) {
+        return result;
+    }
+
+    int histogram[256];
+    calculate_histogram(image, histogram);
+
+    size_t num_pixels = image->width * image->height;
+    double total_intensity = 0;
+    for (int i = 0; i < 256; i++) {
+        total_intensity += i * histogram[i];
+    }
+
+    double best_variance = 0;
+    int best_threshold = 0;
+
+    double w0 = 0; // sum of probabilities for class 0
+    double sum0 = 0; // sum of intensities for class 0
+
+    for (int t = 0; t < 256; t++) {
+        w0 += histogram[t];
+        if (w0 == 0) continue;
+
+        double w1 = num_pixels - w0;
+        if (w1 == 0) break;
+
+        sum0 += t * histogram[t];
+
+        double m0 = sum0 / w0;
+        double m1 = (total_intensity - sum0) / w1;
+
+        double between_class_variance = w0 * w1 * (m0 - m1) * (m0 - m1);
+
+        if (between_class_variance > best_variance) {
+            best_variance = between_class_variance;
+            best_threshold = t;
+        }
+    }
+
+    int threshold = best_threshold; 
+
+    result.width = image->width;
+    result.height = image->height;
+    result.data = (unsigned char*)malloc(image->width * image->height);
+    if (result.data == NULL) {
+        result.width = 0;
+        result.height = 0;
+        return result;
+    }
+
+    for (size_t i = 0; i < image->width * image->height; i++) {
+        result.data[i] = image->data[i] > threshold ? 255 : 0;
+    }
+
+    return result;
+}

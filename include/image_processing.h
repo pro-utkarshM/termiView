@@ -47,4 +47,6 @@ void equalize_histogram(grayscale_image_t* image);
 
 grayscale_image_t connected_components(grayscale_image_t* image, int connectivity);
 
+grayscale_image_t apply_otsu_thresholding(const grayscale_image_t* image);
+
 #endif

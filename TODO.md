@@ -22,7 +22,7 @@
 * [x] Complete spatial filter library
 * [x] Frequency domain filtering
 * [x] Advanced edge detection (Prewitt, Roberts)
-* [ ] Advanced edge detection (Canny)
+* [x] Advanced edge detection (Canny)
 * [ ] Thresholding methods (Otsu, adaptive)
 * [ ] Region-based segmentation
 

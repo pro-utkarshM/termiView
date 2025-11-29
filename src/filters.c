@@ -500,6 +500,221 @@ grayscale_image_t apply_roberts_edge_detection(const grayscale_image_t* image) {
     return result;
 }
 
+
+// Recursive helper for hysteresis
+static void hysteresis_recursive(grayscale_image_t* image, int x, int y) {
+    if (x < 0 || x >= (int)image->width || y < 0 || y >= (int)image->height || image->data[y * image->width + x] != 128) {
+        return;
+    }
+
+    image->data[y * image->width + x] = 255; // Mark as strong edge
+
+    // Check 8 neighbors
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            if (dx == 0 && dy == 0) continue;
+            hysteresis_recursive(image, x + dx, y + dy);
+        }
+    }
+}
+
+static void hysteresis_edge_tracking(grayscale_image_t* image) {
+    for (size_t y = 0; y < image->height; y++) {
+        for (size_t x = 0; x < image->width; x++) {
+            if (image->data[y * image->width + x] == 255) {
+                hysteresis_recursive(image, (int)x, (int)y);
+            }
+        }
+    }
+
+    // Clean up any remaining weak edges
+    for (size_t i = 0; i < image->width * image->height; i++) {
+        if (image->data[i] == 128) {
+            image->data[i] = 0;
+        }
+    }
+}
+
+static grayscale_image_t double_thresholding(const grayscale_image_t* image, float low_ratio, float high_ratio) {
+    grayscale_image_t result = {0};
+    result.width = image->width;
+    result.height = image->height;
+    result.data = (unsigned char*)calloc(image->width * image->height, sizeof(unsigned char));
+
+    if (result.data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for thresholding result\n");
+        result.width = 0;
+        result.height = 0;
+        return result;
+    }
+
+    // Find the maximum magnitude to scale thresholds
+    float max_mag = 0;
+    for (size_t i = 0; i < image->width * image->height; i++) {
+        if (image->data[i] > max_mag) {
+            max_mag = image->data[i];
+        }
+    }
+
+    float high_threshold = max_mag * high_ratio;
+    float low_threshold = high_threshold * low_ratio;
+
+    const unsigned char WEAK = 128;
+    const unsigned char STRONG = 255;
+
+    for (size_t i = 0; i < image->width * image->height; i++) {
+        if (image->data[i] >= high_threshold) {
+            result.data[i] = STRONG;
+        } else if (image->data[i] >= low_threshold) {
+            result.data[i] = WEAK;
+        }
+    }
+
+    return result;
+}
+
+static grayscale_image_t non_maximum_suppression(size_t width, size_t height, const float* magnitude, const float* orientation) {
+    grayscale_image_t result = {0};
+    result.width = width;
+    result.height = height;
+    result.data = (unsigned char*)calloc(width * height, sizeof(unsigned char));
+    if (result.data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for non-maximum suppression\n");
+        result.width = 0;
+        result.height = 0;
+        return result;
+    }
+
+    for (size_t y = 1; y < height - 1; y++) {
+        for (size_t x = 1; x < width - 1; x++) {
+            size_t i = y * width + x;
+            float angle = orientation[i] * 180.0f / M_PI;
+            if (angle < 0) angle += 180;
+
+            float mag = magnitude[i];
+            float q = 255.0f;
+            float r = 255.0f;
+
+            // Find neighbors in the gradient direction
+            if ((0 <= angle && angle < 22.5) || (157.5 <= angle && angle <= 180)) {
+                q = magnitude[i + 1];
+                r = magnitude[i - 1];
+            } else if (22.5 <= angle && angle < 67.5) {
+                q = magnitude[i - width + 1];
+                r = magnitude[i + width - 1];
+            } else if (67.5 <= angle && angle < 112.5) {
+                q = magnitude[i - width];
+                r = magnitude[i + width];
+            } else if (112.5 <= angle && angle < 157.5) {
+                q = magnitude[i - width - 1];
+                r = magnitude[i + width + 1];
+            }
+
+            // Suppress if not a local maximum
+            if (mag >= q && mag >= r) {
+                result.data[i] = clamp_byte(mag);
+            }
+        }
+    }
+    return result;
+}
+
+grayscale_image_t apply_canny_edge_detection(const grayscale_image_t* image, float sigma, float low_threshold_ratio, float high_threshold_ratio) {
+    grayscale_image_t result = {0};
+    if (image == NULL || image->data == NULL) {
+        fprintf(stderr, "Error: Invalid input to apply_canny_edge_detection\n");
+        return result;
+    }
+
+    // Step 1: Apply Gaussian Blur
+    // For Canny, typically a 5x5 kernel with sigma=1.4 is a good starting point
+    size_t kernel_size = 5; 
+    if (sigma <= 0) sigma = 1.4f; // Default sigma if not provided or invalid
+    if (kernel_size % 2 == 0) kernel_size++; // Ensure odd kernel size
+
+    kernel_t gaussian_kernel = create_gaussian_blur_kernel(kernel_size, sigma);
+    grayscale_image_t blurred_image = apply_convolution_grayscale(image, &gaussian_kernel);
+    free_kernel(&gaussian_kernel);
+
+    if (blurred_image.data == NULL) {
+        return result;
+    }
+
+
+    // Step 2: Calculate Gradient Magnitude and Direction
+    grayscale_image_t gx_image, gy_image;
+    float* magnitude = (float*)malloc(image->width * image->height * sizeof(float));
+    float* orientation = (float*)malloc(image->width * image->height * sizeof(float));
+
+    if (magnitude == NULL || orientation == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for gradient calculation\n");
+        free(blurred_image.data);
+        free(magnitude);
+        free(orientation);
+        return result;
+    }
+
+    kernel_t sobel_x = create_sobel_x_kernel();
+    kernel_t sobel_y = create_sobel_y_kernel();
+
+    gx_image = apply_convolution_grayscale(&blurred_image, &sobel_x);
+    gy_image = apply_convolution_grayscale(&blurred_image, &sobel_y);
+
+    free_kernel(&sobel_x);
+    free_kernel(&sobel_y);
+
+    if (gx_image.data == NULL || gy_image.data == NULL) {
+        free(blurred_image.data);
+        free(gx_image.data);
+        free(gy_image.data);
+        free(magnitude);
+        free(orientation);
+        return result;
+    }
+
+    for (size_t i = 0; i < image->width * image->height; i++) {
+        float gx = (float)gx_image.data[i];
+        float gy = (float)gy_image.data[i];
+        magnitude[i] = sqrtf(gx * gx + gy * gy);
+        orientation[i] = atan2f(gy, gx);
+    }
+    
+    free(gx_image.data);
+    free(gy_image.data);
+
+    // Step 3: Non-Maximum Suppression
+    grayscale_image_t nms_image = non_maximum_suppression(image->width, image->height, magnitude, orientation);
+    
+    // Cleanup allocated memory for gradient
+    free(magnitude);
+    free(orientation);
+    
+    if (nms_image.data == NULL) {
+        free(blurred_image.data);
+        return result;
+    }
+
+    // Step 4: Double Thresholding
+    grayscale_image_t thresholded_image = double_thresholding(&nms_image, low_threshold_ratio, high_threshold_ratio);
+    free(nms_image.data);
+
+    if(thresholded_image.data == NULL){
+        free(blurred_image.data);
+        return result;
+    }
+
+    // Step 5: Edge Tracking by Hysteresis
+    hysteresis_edge_tracking(&thresholded_image);
+
+    // Final result is the thresholded image after hysteresis
+    result = thresholded_image; 
+    
+    // Cleanup allocated memory
+    free(blurred_image.data);
+
+    return result;
+}
+
 filter_type_t parse_filter_type(const char* filter_str) {
     if (filter_str == NULL) {
         return FILTER_NONE;
@@ -515,6 +730,8 @@ filter_type_t parse_filter_type(const char* filter_str) {
         return FILTER_EDGE_PREWITT;
     } else if (strcmp(filter_str, "roberts") == 0 || strcmp(filter_str, "edge-roberts") == 0) {
         return FILTER_EDGE_ROBERTS;
+    } else if (strcmp(filter_str, "canny") == 0 || strcmp(filter_str, "edge-canny") == 0) {
+        return FILTER_EDGE_CANNY;
     } else if (strcmp(filter_str, "laplacian") == 0 || strcmp(filter_str, "edge-laplacian") == 0) {
         return FILTER_EDGE_LAPLACIAN;
     } else if (strcmp(filter_str, "salt-pepper") == 0) {

@@ -137,6 +137,38 @@ char *all_tests() {
     mu_run_test(test_apply_salt_pepper_noise);
     mu_run_test(test_calculate_histogram);
     mu_run_test(test_equalize_histogram);
+    mu_run_test(test_otsu_thresholding);
+    return 0;
+}
+
+char *test_otsu_thresholding() {
+    int width = 4;
+    int height = 1;
+    size_t num_pixels = width * height;
+    unsigned char *image_data = malloc(num_pixels * sizeof(unsigned char));
+    // Bimodal image
+    image_data[0] = 10;
+    image_data[1] = 20;
+    image_data[2] = 200;
+    image_data[3] = 210;
+
+    grayscale_image_t image = {
+        .width = (size_t)width,
+        .height = (size_t)height,
+        .data = image_data
+    };
+
+    grayscale_image_t thresholded_image = apply_otsu_thresholding(&image);
+
+    // The threshold should be between 20 and 200.
+    // Let's check the result.
+    mu_assert("Otsu: pixel 0 should be black", thresholded_image.data[0] == 0);
+    mu_assert("Otsu: pixel 1 should be black", thresholded_image.data[1] == 0);
+    mu_assert("Otsu: pixel 2 should be white", thresholded_image.data[2] == 255);
+    mu_assert("Otsu: pixel 3 should be white", thresholded_image.data[3] == 255);
+
+    free(image_data);
+    free(thresholded_image.data);
     return 0;
 }
 

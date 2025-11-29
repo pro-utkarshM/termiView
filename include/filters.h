@@ -25,6 +25,7 @@ typedef enum {
     FILTER_EDGE_PREWITT,
     FILTER_EDGE_ROBERTS,
     FILTER_EDGE_LAPLACIAN,
+    FILTER_EDGE_CANNY,
     FILTER_SALT_PEPPER,
     FILTER_IDEAL_LOWPASS,
     FILTER_IDEAL_HIGHPASS,
@@ -61,6 +62,12 @@ grayscale_image_t apply_prewitt_edge_detection(const grayscale_image_t* image);
  * Returns a new image with the filter applied
  */
 grayscale_image_t apply_roberts_edge_detection(const grayscale_image_t* image);
+
+/**
+ * Apply Canny edge detection to a grayscale image
+ * Returns a new image with the filter applied
+ */
+grayscale_image_t apply_canny_edge_detection(const grayscale_image_t* image, float sigma, float low_threshold_ratio, float high_threshold_ratio);
 
 /**
  * Create a Gaussian blur kernel
