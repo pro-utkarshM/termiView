@@ -2,6 +2,9 @@
 #include "image_processing.h"
 #include <stdlib.h>
 
+char *test_otsu_thresholding();
+char *test_adaptive_thresholding();
+
 char *test_equalize_histogram() {
     int width = 2;
     int height = 2;
@@ -71,8 +74,8 @@ char *test_apply_salt_pepper_noise() {
     float density = 0.2f; // 20% noise
     grayscale_image_t noisy_image = apply_salt_pepper_noise(&original_image, density);
 
-    mu_assert_int_eq(width, noisy_image.width);
-    mu_assert_int_eq(height, noisy_image.height);
+    mu_assert_int_eq((int)width, (int)noisy_image.width);
+    mu_assert_int_eq((int)height, (int)noisy_image.height);
 
     int salt_count = 0;
     int pepper_count = 0;
@@ -132,12 +135,48 @@ char *test_quantize_grayscale() {
     return 0;
 }
 
+char *test_adaptive_thresholding() {
+    int width = 5;
+    int height = 5;
+    size_t num_pixels = width * height;
+    unsigned char *image_data = malloc(num_pixels * sizeof(unsigned char));
+
+    // Create a gradient image
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            image_data[y * width + x] = (unsigned char)((y * width + x) * 10);
+        }
+    }
+
+    grayscale_image_t image = {
+        .width = (size_t)width,
+        .height = (size_t)height,
+        .data = image_data
+    };
+
+    grayscale_image_t thresholded_image = apply_adaptive_thresholding(&image, 3, 5);
+
+    // Assert that the output image is not null
+    mu_assert("Adaptive thresholding image data is null", thresholded_image.data != NULL);
+
+    // Check a few pixels
+    // The top-left corner should be black, and the bottom-right should be white
+    mu_assert("Adaptive: pixel (0,0) should be black", thresholded_image.data[0] == 0);
+    mu_assert("Adaptive: pixel (4,4) should be white", thresholded_image.data[num_pixels-1] == 255);
+
+
+    free(image_data);
+    free(thresholded_image.data);
+    return 0;
+}
+
 char *all_tests() {
     mu_run_test(test_quantize_grayscale);
     mu_run_test(test_apply_salt_pepper_noise);
     mu_run_test(test_calculate_histogram);
     mu_run_test(test_equalize_histogram);
     mu_run_test(test_otsu_thresholding);
+    mu_run_test(test_adaptive_thresholding);
     return 0;
 }
 

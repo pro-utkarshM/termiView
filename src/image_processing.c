@@ -581,3 +581,47 @@ grayscale_image_t apply_otsu_thresholding(const grayscale_image_t* image) {
 
     return result;
 }
+
+grayscale_image_t apply_adaptive_thresholding(const grayscale_image_t* image, int block_size, double c) {
+    grayscale_image_t result = {0};
+    if (image == NULL || image->data == NULL) {
+        return result;
+    }
+
+    result.width = image->width;
+    result.height = image->height;
+    result.data = (unsigned char*)malloc(image->width * image->height);
+    if (result.data == NULL) {
+        result.width = 0;
+        result.height = 0;
+        return result;
+    }
+
+    int half_block = block_size / 2;
+
+    for (size_t y = 0; y < image->height; y++) {
+        for (size_t x = 0; x < image->width; x++) {
+            double sum = 0;
+            int count = 0;
+
+            for (int j = -half_block; j <= half_block; j++) {
+                for (int i = -half_block; i <= half_block; i++) {
+                    int cur_x = (int)x + i;
+                    int cur_y = (int)y + j;
+
+                    if (cur_x >= 0 && cur_x < (int)image->width && cur_y >= 0 && cur_y < (int)image->height) {
+                        sum += image->data[cur_y * image->width + cur_x];
+                        count++;
+                    }
+                }
+            }
+
+            double mean = sum / count;
+            double threshold = mean - c;
+
+            result.data[y * image->width + x] = image->data[y * image->width + x] > threshold ? 255 : 0;
+        }
+    }
+
+    return result;
+}

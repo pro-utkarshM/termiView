@@ -30,8 +30,8 @@ char *test_frequency_filters() {
     unsigned char *image_data = malloc(num_pixels * sizeof(unsigned char));
 
     // Create a checkerboard pattern to have some high frequencies
-    for (size_t y = 0; y < height; y++) {
-        for (size_t x = 0; x < width; x++) {
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
             image_data[y * width + x] = ((x / 8) % 2 == (y / 8) % 2) ? 0 : 255;
         }
     }
@@ -92,8 +92,8 @@ char *test_dwt_grayscale_constant_image() {
 
     grayscale_image_t dwt_image = dwt_grayscale(&original_image);
 
-    mu_assert_int_eq(width, dwt_image.width);
-    mu_assert_int_eq(height, dwt_image.height);
+    mu_assert_int_eq((int)width, (int)dwt_image.width);
+    mu_assert_int_eq((int)height, (int)dwt_image.height);
 
     // For a constant image, only the top-left coefficient (LL band) should be non-zero
     // After normalization, it should have the highest value
@@ -124,8 +124,8 @@ char *test_dct_grayscale_constant_image() {
 
     grayscale_image_t dct_image = dct_grayscale(&original_image);
 
-    mu_assert_int_eq(width, dct_image.width);
-    mu_assert_int_eq(height, dct_image.height);
+    mu_assert_int_eq((int)width, (int)dct_image.width);
+    mu_assert_int_eq((int)height, (int)dct_image.height);
 
     // For a constant image, only the DC component (top-left, u=0, v=0) should be non-zero
     // The value after normalization and log transform should be 255 for the DC component

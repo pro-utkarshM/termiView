@@ -49,4 +49,6 @@ grayscale_image_t connected_components(grayscale_image_t* image, int connectivit
 
 grayscale_image_t apply_otsu_thresholding(const grayscale_image_t* image);
 
+grayscale_image_t apply_adaptive_thresholding(const grayscale_image_t* image, int block_size, double c);
+
 #endif

@@ -23,7 +23,7 @@
 * [x] Frequency domain filtering
 * [x] Advanced edge detection (Prewitt, Roberts)
 * [x] Advanced edge detection (Canny)
-* [ ] Thresholding methods (Otsu, adaptive)
+* [x] Thresholding methods (Otsu, adaptive)
 * [ ] Region-based segmentation
 
 **Unit 3 - Compression:**
