@@ -33,7 +33,7 @@
 * [x] Run-length encoding
 * [x] Transform coding (DCT-based)
 * [x] JPEG encoder/decoder
-* [ ] Wavelet-based compression
+* [x] Wavelet-based compression
 
 **Unit 4 - Video Processing:**
 * [ ] Video file I/O

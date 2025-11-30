@@ -9,7 +9,7 @@
 #include <math.h> // For round()
 
 
-// Helper function to calculate frequencies of bytes in data
+// Function to calculate frequencies of bytes in data
 void calculate_frequencies(const unsigned char* data, size_t data_len, unsigned int* frequencies) {
     // Initialize frequencies to 0
     for (int i = 0; i < 256; i++) {
@@ -22,6 +22,46 @@ void calculate_frequencies(const unsigned char* data, size_t data_len, unsigned 
     }
 }
 
+// 1D Haar DWT
+static void dwt_1d(double* data, int n) {
+    if (n <= 1) return;
+
+    double* temp = (double*)malloc(sizeof(double) * n);
+    if (temp == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for DWT temporary array\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int h = n / 2;
+    for (int i = 0; i < h; i++) {
+        temp[i] = (data[2 * i] + data[2 * i + 1]) / 2.0;       // Approximation
+        temp[i + h] = (data[2 * i] - data[2 * i + 1]) / 2.0;   // Detail
+    }
+
+    memcpy(data, temp, sizeof(double) * n);
+    free(temp);
+}
+
+// 1D Inverse Haar DWT
+static void idwt_1d(double* data, int n) {
+    if (n <= 1) return;
+
+    double* temp = (double*)malloc(sizeof(double) * n);
+    if (temp == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for IDWT temporary array\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int h = n / 2;
+    for (int i = 0; i < h; i++) {
+        temp[2 * i] = data[i] + data[i + h];       // Original even
+        temp[2 * i + 1] = data[i] - data[i + h];   // Original odd
+    }
+
+    memcpy(data, temp, sizeof(double) * n);
+    free(temp);
+}
+
 // Function to create a new Huffman node
 static HuffmanNode* create_huffman_node(unsigned char data, unsigned int frequency) {
     HuffmanNode* node = (HuffmanNode*)malloc(sizeof(HuffmanNode));
@@ -29,6 +69,7 @@ static HuffmanNode* create_huffman_node(unsigned char data, unsigned int frequen
         fprintf(stderr, "Error: Failed to allocate memory for HuffmanNode\n");
         exit(EXIT_FAILURE);
     }
+
     node->data = data;
     node->frequency = frequency;
     node->left = node->right = NULL;
@@ -1065,11 +1106,258 @@ unsigned char* jpeg_encode(const grayscale_image_t* image, int quality, size_t* 
         }
     }
 
-    free_grayscale_image(&padded_image);
-    *encoded_len_bytes = current_encoded_idx;
-
-    // Shrink to fit
-    encoded_data = (unsigned char*)realloc(encoded_data, *encoded_len_bytes);
     return encoded_data;
+}
+
+// Compute 2D DWT using 1D Haar wavelets
+void compute_dwt_2d(const grayscale_image_t* image, double* out_coeffs, int levels) {
+    if (image == NULL || out_coeffs == NULL || levels < 1) {
+        fprintf(stderr, "Error: Invalid input to compute_dwt_2d\n");
+        return;
+    }
+
+    int original_width = image->width;
+    int original_height = image->height;
+
+    // Pad image to nearest power of 2 for simplicity
+    int padded_width = 1;
+    while (padded_width < original_width) padded_width <<= 1;
+    int padded_height = 1;
+    while (padded_height < original_height) padded_height <<= 1;
+
+    double* temp_data = (double*)malloc(sizeof(double) * padded_width * padded_height);
+    if (temp_data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for DWT temp_data\n");
+        return;
+    }
+
+    // Copy original image data and perform zero-mean shift
+    for (int y = 0; y < original_height; y++) {
+        for (int x = 0; x < original_width; x++) {
+            temp_data[y * padded_width + x] = (double)image->data[y * original_width + x] - 128.0;
+        }
+    }
+    // Pad remaining area with 0
+    for (int y = 0; y < padded_height; y++) {
+        for (int x = 0; x < padded_width; x++) {
+            if (y >= original_height || x >= original_width) {
+                temp_data[y * padded_width + x] = 0.0;
+            }
+        }
+    }
+
+
+    // Perform DWT for 'levels' times
+    int current_width = padded_width;
+    int current_height = padded_height;
+    for (int l = 0; l < levels; l++) {
+        if (current_width < 2 || current_height < 2) break; // Cannot decompose further
+
+        // DWT on rows
+        for (int y = 0; y < current_height; y++) {
+            double* row_data = (double*)malloc(sizeof(double) * current_width);
+            if (row_data == NULL) { /* handle error */ return; }
+            memcpy(row_data, temp_data + y * padded_width, sizeof(double) * current_width);
+            dwt_1d(row_data, current_width);
+            memcpy(temp_data + y * padded_width, row_data, sizeof(double) * current_width);
+            free(row_data);
+        }
+
+        // DWT on columns
+        for (int x = 0; x < current_width; x++) {
+            double* col_data = (double*)malloc(sizeof(double) * current_height);
+            if (col_data == NULL) { /* handle error */ return; }
+            for (int y = 0; y < current_height; y++) {
+                col_data[y] = temp_data[y * padded_width + x];
+            }
+            dwt_1d(col_data, current_height);
+            for (int y = 0; y < current_height; y++) {
+                temp_data[y * padded_width + x] = col_data[y];
+            }
+            free(col_data);
+        }
+        current_width /= 2;
+        current_height /= 2;
+    }
+    memcpy(out_coeffs, temp_data, sizeof(double) * padded_width * padded_height);
+    free(temp_data);
+}
+
+// Compute 2D IDWT using 1D Haar wavelets
+void compute_idwt_2d(double* in_coeffs, grayscale_image_t* out_image, int levels) {
+    if (in_coeffs == NULL || out_image == NULL || levels < 1) {
+        fprintf(stderr, "Error: Invalid input to compute_idwt_2d\n");
+        return;
+    }
+
+    int original_width = out_image->width;
+    int original_height = out_image->height;
+
+    int padded_width = 1;
+    while (padded_width < original_width) padded_width <<= 1;
+    int padded_height = 1;
+    while (padded_height < original_height) padded_height <<= 1;
+
+    double* temp_data = (double*)malloc(sizeof(double) * padded_width * padded_height);
+    if (temp_data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for DWT temp_data\n");
+        return;
+    }
+    memcpy(temp_data, in_coeffs, sizeof(double) * padded_width * padded_height);
+
+
+    // Perform IDWT for 'levels' times
+    int current_width = padded_width / (1 << (levels - 1));
+    int current_height = padded_height / (1 << (levels - 1));
+
+    for (int l = 0; l < levels; l++) {
+        // IDWT on columns
+        for (int x = 0; x < current_width; x++) {
+            double* col_data = (double*)malloc(sizeof(double) * current_height);
+            if (col_data == NULL) { /* handle error */ return; }
+            for (int y = 0; y < current_height; y++) {
+                col_data[y] = temp_data[y * padded_width + x];
+            }
+            idwt_1d(col_data, current_height);
+            for (int y = 0; y < current_height; y++) {
+                temp_data[y * padded_width + x] = col_data[y];
+            }
+            free(col_data);
+        }
+
+        // IDWT on rows
+        for (int y = 0; y < current_height; y++) {
+            double* row_data = (double*)malloc(sizeof(double) * current_width);
+            if (row_data == NULL) { /* handle error */ return; }
+            memcpy(row_data, temp_data + y * padded_width, sizeof(double) * current_width);
+            idwt_1d(row_data, current_width);
+            memcpy(temp_data + y * padded_width, row_data, sizeof(double) * current_width);
+            free(row_data);
+        }
+        current_width *= 2;
+        current_height *= 2;
+    }
+
+    // Copy to output image and add back 128
+    for (int y = 0; y < original_height; y++) {
+        for (int x = 0; x < original_width; x++) {
+            double val = temp_data[y * padded_width + x] + 128.0;
+            if (val < 0.0) val = 0.0;
+            if (val > 255.0) val = 255.0;
+            out_image->data[y * original_width + x] = (unsigned char)round(val);
+        }
+    }
+    free(temp_data);
+}
+
+// Function to encode data using Wavelet-based compression
+unsigned char* wavelet_encode(const grayscale_image_t* image, int levels, size_t* encoded_len_bytes) {
+    if (image == NULL || encoded_len_bytes == NULL || levels < 1) {
+        return NULL;
+    }
+
+    int original_width = image->width;
+    int original_height = image->height;
+
+    // Pad image to nearest power of 2
+    int padded_width = 1;
+    while (padded_width < original_width) padded_width <<= 1;
+    int padded_height = 1;
+    while (padded_height < original_height) padded_height <<= 1;
+
+    size_t num_coeffs = padded_width * padded_height;
+    double* dwt_coeffs = (double*)malloc(sizeof(double) * num_coeffs);
+    if (dwt_coeffs == NULL) {
+        return NULL;
+    }
+
+    compute_dwt_2d(image, dwt_coeffs, levels);
+
+    // Simple quantization
+    double quantization_step = 10.0;
+    
+    // Allocate memory for encoded data: original width, original height, levels, and quantized coeffs
+    *encoded_len_bytes = sizeof(int) * 3 + num_coeffs * sizeof(char); 
+    unsigned char* encoded_data = (unsigned char*)malloc(*encoded_len_bytes);
+    if (encoded_data == NULL) {
+        free(dwt_coeffs);
+        return NULL;
+    }
+
+    size_t current_encoded_idx = 0;
+    memcpy(encoded_data + current_encoded_idx, &original_width, sizeof(int));
+    current_encoded_idx += sizeof(int);
+    memcpy(encoded_data + current_encoded_idx, &original_height, sizeof(int));
+    current_encoded_idx += sizeof(int);
+    memcpy(encoded_data + current_encoded_idx, &levels, sizeof(int));
+    current_encoded_idx += sizeof(int);
+    
+    char* quantized_coeffs = (char*)(encoded_data + current_encoded_idx);
+
+    for (size_t i = 0; i < num_coeffs; i++) {
+        quantized_coeffs[i] = (char)round(dwt_coeffs[i] / quantization_step);
+    }
+
+    free(dwt_coeffs);
+    return encoded_data;
+}
+
+// Function to decode data using Wavelet-based compression
+grayscale_image_t* wavelet_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, size_t width_out, size_t height_out, int levels) {
+    if (encoded_data == NULL || encoded_len_bytes == 0 || levels < 1) {
+        return NULL;
+    }
+
+    int original_width, original_height, stored_levels;
+    size_t current_decoded_idx = 0;
+    memcpy(&original_width, encoded_data + current_decoded_idx, sizeof(int));
+    current_decoded_idx += sizeof(int);
+    memcpy(&original_height, encoded_data + current_decoded_idx, sizeof(int));
+    current_decoded_idx += sizeof(int);
+    memcpy(&stored_levels, encoded_data + current_decoded_idx, sizeof(int));
+    current_decoded_idx += sizeof(int);
+
+    if (width_out != (size_t)original_width || height_out != (size_t)original_height || levels != stored_levels) {
+        fprintf(stderr, "Error: Mismatch in dimensions or levels during Wavelet-based decoding.\n");
+        return NULL;
+    }
+
+    int padded_width = 1;
+    while (padded_width < original_width) padded_width <<= 1;
+    int padded_height = 1;
+    while (padded_height < original_height) padded_height <<= 1;
+
+    size_t num_coeffs = padded_width * padded_height;
+    const char* quantized_coeffs = (const char*)(encoded_data + current_decoded_idx);
+
+    double* dwt_coeffs = (double*)malloc(sizeof(double) * num_coeffs);
+    if (dwt_coeffs == NULL) {
+        return NULL;
+    }
+
+    double quantization_step = 10.0; // Must be the same as encoding
+
+    for (size_t i = 0; i < num_coeffs; i++) {
+        dwt_coeffs[i] = (double)quantized_coeffs[i] * quantization_step;
+    }
+
+    grayscale_image_t* decoded_image = (grayscale_image_t*)malloc(sizeof(grayscale_image_t));
+    if (decoded_image == NULL) {
+        free(dwt_coeffs);
+        return NULL;
+    }
+    decoded_image->width = original_width;
+    decoded_image->height = original_height;
+    decoded_image->data = (unsigned char*)malloc(original_width * original_height);
+    if (decoded_image->data == NULL) {
+        free(decoded_image);
+        free(dwt_coeffs);
+        return NULL;
+    }
+
+    compute_idwt_2d(dwt_coeffs, decoded_image, levels);
+
+    free(dwt_coeffs);
+    return decoded_image;
 }
 

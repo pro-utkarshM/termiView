@@ -91,5 +91,15 @@ grayscale_image_t* dct_based_decode(const unsigned char* encoded_data, size_t en
 // Function to encode grayscale image using JPEG (simplified)
 unsigned char* jpeg_encode(const grayscale_image_t* image, int quality, size_t* encoded_len_bytes);
 
+// Functions for DWT based compression
+void compute_dwt_2d(const grayscale_image_t* image, double* out_coeffs, int levels);
+void compute_idwt_2d(double* in_coeffs, grayscale_image_t* out_image, int levels);
+
+// Function to encode data using Wavelet-based compression
+unsigned char* wavelet_encode(const grayscale_image_t* image, int levels, size_t* encoded_len_bytes);
+
+// Function to decode data using Wavelet-based compression
+grayscale_image_t* wavelet_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, size_t width, size_t height, int levels);
+
 
 #endif // COMPRESSION_H

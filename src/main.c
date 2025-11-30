@@ -16,7 +16,8 @@ typedef enum {
     COMPRESSION_ARITHMETIC,
     COMPRESSION_RLE,
     COMPRESSION_DCT_BASED,
-    COMPRESSION_JPEG
+    COMPRESSION_JPEG,
+    COMPRESSION_WAVELET
 } compression_type_t;
 
 #define VERSION "0.3.0"
@@ -96,6 +97,7 @@ int main(int argc, char* argv[]) {
     double cutoff = 20.0; // Default cutoff frequency
     compression_type_t compression_type = COMPRESSION_NONE;
     bool decompress_mode = false;
+    int wavelet_levels = 1; // Default wavelet decomposition levels
 
     // Long options
     static struct option long_options[] = {
@@ -120,6 +122,7 @@ int main(int argc, char* argv[]) {
         {"cutoff",  required_argument, 0,  1 },
         {"compress", required_argument, 0, 2},
         {"decompress", required_argument, 0, 3},
+        {"wavelet-levels", required_argument, 0, 4},
         {0, 0, 0, 0}
     };
 
@@ -147,6 +150,14 @@ int main(int argc, char* argv[]) {
                     compression_type = COMPRESSION_HUFFMAN;
                 } else if (strcmp(optarg, "arithmetic") == 0) {
                     compression_type = COMPRESSION_ARITHMETIC;
+                } else if (strcmp(optarg, "rle") == 0) {
+                    compression_type = COMPRESSION_RLE;
+                } else if (strcmp(optarg, "dct_based") == 0) {
+                    compression_type = COMPRESSION_DCT_BASED;
+                } else if (strcmp(optarg, "jpeg") == 0) {
+                    compression_type = COMPRESSION_JPEG;
+                } else if (strcmp(optarg, "wavelet") == 0) {
+                    compression_type = COMPRESSION_WAVELET;
                 } else {
                     fprintf(stderr, "Error: Unknown compression type '%s'\\n", optarg);
                     return 1;
@@ -160,8 +171,23 @@ int main(int argc, char* argv[]) {
                     compression_type = COMPRESSION_HUFFMAN;
                 } else if (strcmp(optarg, "arithmetic") == 0) {
                     compression_type = COMPRESSION_ARITHMETIC;
+                } else if (strcmp(optarg, "rle") == 0) {
+                    compression_type = COMPRESSION_RLE;
+                } else if (strcmp(optarg, "dct_based") == 0) {
+                    compression_type = COMPRESSION_DCT_BASED;
+                } else if (strcmp(optarg, "jpeg") == 0) {
+                    compression_type = COMPRESSION_JPEG;
+                } else if (strcmp(optarg, "wavelet") == 0) {
+                    compression_type = COMPRESSION_WAVELET;
                 } else {
                     fprintf(stderr, "Error: Unknown compression type '%s'\\n", optarg);
+                    return 1;
+                }
+                break;
+            case 4:
+                wavelet_levels = atoi(optarg);
+                if (wavelet_levels < 1) {
+                    fprintf(stderr, "Error: Wavelet levels must be at least 1\n");
                     return 1;
                 }
                 break;
@@ -319,6 +345,29 @@ int main(int argc, char* argv[]) {
                         }
                     }
                     break;
+                case COMPRESSION_WAVELET:
+                    {
+                        int original_width, original_height, levels;
+                        size_t current_decoded_idx = 0;
+                        memcpy(&original_width, input_data + current_decoded_idx, sizeof(int));
+                        current_decoded_idx += sizeof(int);
+                        memcpy(&original_height, input_data + current_decoded_idx, sizeof(int));
+                        current_decoded_idx += sizeof(int);
+                        memcpy(&levels, input_data + current_decoded_idx, sizeof(int));
+                        current_decoded_idx += sizeof(int);
+
+                        grayscale_image_t* decoded_image = wavelet_decode(input_data, input_len, original_width, original_height, wavelet_levels);
+                        if (decoded_image) {
+                            output_len = decoded_image->width * decoded_image->height;
+                            output_data = (unsigned char*)malloc(output_len);
+                            if (output_data) {
+                                memcpy(output_data, decoded_image->data, output_len);
+                            }
+                            free_grayscale_image(decoded_image);
+                            free(decoded_image);
+                        }
+                    }
+                    break;
                 default:
                     break;
             }
@@ -350,6 +399,15 @@ int main(int argc, char* argv[]) {
                         grayscale_image_t original_image = load_image_as_grayscale(input_file);
                         if (original_image.data != NULL) {
                             output_data = jpeg_encode(&original_image, 50, &output_len); // Default quality 50
+                            free_grayscale_image(&original_image);
+                        }
+                    }
+                    break;
+                case COMPRESSION_WAVELET:
+                    {
+                        grayscale_image_t original_image = load_image_as_grayscale(input_file);
+                        if (original_image.data != NULL) {
+                            output_data = wavelet_encode(&original_image, wavelet_levels, &output_len); // Use wavelet_levels
                             free_grayscale_image(&original_image);
                         }
                     }

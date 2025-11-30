@@ -30,8 +30,9 @@ Options:
   -E, --equalize         Apply histogram equalization to grayscale images
   -v, --version          Show version information
   --help                 Show this help message
-  --compress <type>      Compress input file using specified algorithm: lzw, huffman, arithmetic, rle, dct_based
-  --decompress <type>    Decompress input file using specified algorithm: lzw, huffman, arithmetic, rle, dct_based
+  --compress <type>      Compress input file using specified algorithm: lzw, huffman, arithmetic, rle, dct_based, wavelet
+  --decompress <type>    Decompress input file using specified algorithm: lzw, huffman, arithmetic, rle, dct_based, wavelet
+  --wavelet-levels <num> Number of decomposition levels for wavelet transform (default: 1)
 ```
 
 ### Examples
@@ -119,6 +120,16 @@ termiView --compress dct_based input.png -o output.dct
 **Decompress an image using DCT-based compression:**
 ```bash
 termiView --decompress dct_based input.dct -o output.png
+```
+
+**Compress an image using Wavelet compression:**
+```bash
+termiView --compress wavelet --wavelet-levels 2 input.png -o output.wlt
+```
+
+**Decompress an image using Wavelet compression:**
+```bash
+termiView --decompress wavelet --wavelet-levels 2 input.wlt -o output.png
 ```
 
 **Compute the 2D DCT of an image:**

@@ -10,6 +10,7 @@ char *test_lzw_compression_decompression();
 char *test_rle_compression_decompression();
 char *test_dct_based_compression_decompression();
 char *test_jpeg_grayscale_compression();
+char *test_wavelet_compression_decompression();
 
 char *test_huffman_compression_decompression() {
     // Sample data
@@ -172,6 +173,51 @@ char *test_jpeg_grayscale_compression() {
     return 0;
 }
 
+char *test_wavelet_compression_decompression() {
+    int width = 16;
+    int height = 16;
+    int levels = 1; // 1 level of decomposition
+    grayscale_image_t original_image = { .width = width, .height = height };
+    original_image.data = (unsigned char*)malloc(width * height);
+    mu_assert("Original image data allocation failed", original_image.data != NULL);
+
+    // Create a simple gradient image for testing
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            original_image.data[i * width + j] = (unsigned char)(i * 10 + j * 5);
+        }
+    }
+
+    // Encode
+    size_t encoded_len_bytes;
+    unsigned char* encoded_data = wavelet_encode(&original_image, levels, &encoded_len_bytes);
+    mu_assert("Wavelet encoded data should not be NULL", encoded_data != NULL);
+    mu_assert("Wavelet encoded length should be greater than 0", encoded_len_bytes > 0);
+
+    // Decode
+    grayscale_image_t* decoded_image = wavelet_decode(encoded_data, encoded_len_bytes, width, height, levels);
+    mu_assert("Wavelet decoded image should not be NULL", decoded_image != NULL);
+    mu_assert("Decoded image width should match original", decoded_image->width == original_image.width);
+    mu_assert("Decoded image height should match original", decoded_image->height == original_image.height);
+
+    // Compare original and decoded images (allowing for some loss due to quantization)
+    double mse = 0.0;
+    for (int i = 0; i < width * height; i++) {
+        mse += pow(original_image.data[i] - decoded_image->data[i], 2);
+    }
+    mse /= (width * height);
+    printf("Wavelet MSE: %f\n", mse);
+    mu_assert("Wavelet decoded image should be close to original (MSE < 6000)", mse < 6000.0);
+
+    // Cleanup
+    free(original_image.data);
+    free(encoded_data);
+    free(decoded_image->data);
+    free(decoded_image);
+
+    return 0;
+}
+
 char *all_tests() {
     mu_run_test(test_huffman_compression_decompression);
     mu_run_test(test_arithmetic_compression_decompression);
@@ -179,6 +225,7 @@ char *all_tests() {
     mu_run_test(test_rle_compression_decompression);
     mu_run_test(test_dct_based_compression_decompression);
     mu_run_test(test_jpeg_grayscale_compression);
+    mu_run_test(test_wavelet_compression_decompression);
     return 0;
 }
 
