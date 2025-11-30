@@ -44,7 +44,7 @@ Options:
   --motion-compensate        Enable motion compensation using estimated motion vectors
   --block-size <num>         Block size for motion estimation (default: 8)
   --search-window <num>      Search window size for motion estimation (default: 8)
-```
+  --fps <num>                Playback speed in frames per second for video demonstrations
 
 ### Examples
 
@@ -166,6 +166,11 @@ termiView --video input.mp4 --temporal-filter average --temporal-filter-size 5
 **Perform motion estimation and compensation on a video:**
 ```bash
 termiView --video input.mp4 --motion-estimate --motion-compensate --block-size 16 --search-window 8
+```
+
+**Display a video with a custom FPS:**
+```bash
+termiView --video input.mp4 --fps 15
 ```
 
 **Compute the 2D DCT of an image:**

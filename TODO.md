@@ -40,7 +40,7 @@
 * [x] Frame extraction and processing
 * [x] Temporal filtering
 * [x] Motion models
-* [ ] Video sampling demonstrations
+* [x] Video sampling demonstrations
 
 **Unit 5 - Motion & Video Coding:**
 * [ ] Optical flow computation
