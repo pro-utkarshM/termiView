@@ -268,6 +268,24 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
                 break;
+            case 9:
+                output_frame_pattern = optarg;
+                break;
+            case 10:
+                if (strcmp(optarg, "average") == 0) {
+                    temporal_filter_type = TEMPORAL_FILTER_AVERAGE;
+                } else {
+                    fprintf(stderr, "Error: Unknown temporal filter type '%s'\\n", optarg);
+                    return 1;
+                }
+                break;
+            case 11:
+                temporal_filter_size = atoi(optarg);
+                if (temporal_filter_size < 2) {
+                    fprintf(stderr, "Error: Temporal filter size must be at least 2\n");
+                    return 1;
+                }
+                break;
             case 'h':
                 max_height = (size_t) atoi(optarg);
                 if (max_height == 0) {
