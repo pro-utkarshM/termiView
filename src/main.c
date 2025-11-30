@@ -111,6 +111,10 @@ int main(int argc, char* argv[]) {
     char* output_frame_pattern = NULL; // NULL indicates no saving of individual frames
     temporal_filter_type_t temporal_filter_type = TEMPORAL_FILTER_NONE;
     int temporal_filter_size = 3; // Default size for temporal filter
+    bool motion_estimate_mode = false; // Enable motion estimation
+    bool motion_compensate_mode = false; // Enable motion compensation
+    int block_size = 8; // Default block size for motion estimation
+    int search_window = 8; // Default search window for motion estimation
 
     // Long options
     static struct option long_options[] = {
@@ -319,6 +323,60 @@ int main(int argc, char* argv[]) {
                 temporal_filter_size = atoi(optarg);
                 if (temporal_filter_size < 2) {
                     fprintf(stderr, "Error: Temporal filter size must be at least 2\n");
+                    return 1;
+                }
+                break;
+            case 11:
+                temporal_filter_size = atoi(optarg);
+                if (temporal_filter_size < 2) {
+                    fprintf(stderr, "Error: Temporal filter size must be at least 2\n");
+                    return 1;
+                }
+                break;
+            case 12: // --motion-estimate
+                motion_estimate_mode = true;
+                break;
+            case 13: // --motion-compensate
+                motion_compensate_mode = true;
+                break;
+            case 14: // --block-size
+                block_size = atoi(optarg);
+                if (block_size <= 0) {
+                    fprintf(stderr, "Error: Block size must be greater than 0\n");
+                    return 1;
+                }
+                break;
+            case 15: // --search-window
+                search_window = atoi(optarg);
+                if (search_window < 0) {
+                    fprintf(stderr, "Error: Search window must be non-negative\n");
+                    return 1;
+                }
+                break;
+            case 11:
+                temporal_filter_size = atoi(optarg);
+                if (temporal_filter_size < 2) {
+                    fprintf(stderr, "Error: Temporal filter size must be at least 2\n");
+                    return 1;
+                }
+                break;
+            case 12: // --motion-estimate
+                motion_estimate_mode = true;
+                break;
+            case 13: // --motion-compensate
+                motion_compensate_mode = true;
+                break;
+            case 14: // --block-size
+                block_size = atoi(optarg);
+                if (block_size <= 0) {
+                    fprintf(stderr, "Error: Block size must be greater than 0\n");
+                    return 1;
+                }
+                break;
+            case 15: // --search-window
+                search_window = atoi(optarg);
+                if (search_window < 0) {
+                    fprintf(stderr, "Error: Search window must be non-negative\n");
                     return 1;
                 }
                 break;
@@ -564,6 +622,8 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
+        grayscale_image_t* previous_frame = NULL;
+        
         if (temporal_filter_type != TEMPORAL_FILTER_NONE) {
             grayscale_image_t** frame_buffer = (grayscale_image_t**)malloc(sizeof(grayscale_image_t*) * temporal_filter_size);
             if (frame_buffer == NULL) {
@@ -577,11 +637,11 @@ int main(int argc, char* argv[]) {
 
             rgb_image_t rgb_frame;
             while (read_video_frame(vid_ctx, &rgb_frame)) {
-                grayscale_image_t* gray_frame = (grayscale_image_t*)malloc(sizeof(grayscale_image_t));
-                *gray_frame = rgb_to_grayscale(&rgb_frame);
+                grayscale_image_t* gray_frame_ptr = (grayscale_image_t*)malloc(sizeof(grayscale_image_t));
+                *gray_frame_ptr = rgb_to_grayscale(&rgb_frame);
                 free_rgb_image(&rgb_frame);
 
-                frame_buffer[buffer_idx++] = gray_frame;
+                frame_buffer[buffer_idx++] = gray_frame_ptr;
 
                 if (buffer_idx == temporal_filter_size) {
                     grayscale_image_t filtered_frame = temporal_average(frame_buffer, temporal_filter_size);
@@ -620,24 +680,65 @@ int main(int argc, char* argv[]) {
                 if (extract_frame_num != -1 && frame_count != extract_frame_num) {
                     free_rgb_image(&rgb_frame);
                     frame_count++;
+                    if (previous_frame != NULL) {
+                        free_grayscale_image(previous_frame);
+                        free(previous_frame);
+                        previous_frame = NULL;
+                    }
                     continue;
                 }
                 if (start_frame_num != -1 && frame_count < start_frame_num) {
                     free_rgb_image(&rgb_frame);
                     frame_count++;
+                    if (previous_frame != NULL) {
+                        free_grayscale_image(previous_frame);
+                        free(previous_frame);
+                        previous_frame = NULL;
+                    }
                     continue;
                 }
                 if (end_frame_num != -1 && frame_count > end_frame_num) {
                     free_rgb_image(&rgb_frame);
+                    if (previous_frame != NULL) {
+                        free_grayscale_image(previous_frame);
+                        free(previous_frame);
+                        previous_frame = NULL;
+                    }
                     break; // End of range
                 }
 
                 grayscale_image_t gray_frame = rgb_to_grayscale(&rgb_frame);
                 free_rgb_image(&rgb_frame);
 
+                grayscale_image_t* frame_to_process = &gray_frame;
+                MotionVectorField* mv_field = NULL;
+                grayscale_image_t* compensated_frame = NULL;
+
+                if (motion_estimate_mode && previous_frame != NULL) {
+                    mv_field = estimate_motion(&gray_frame, previous_frame, block_size, search_window);
+                }
+
+                if (motion_compensate_mode && mv_field != NULL) {
+                    compensated_frame = compensate_motion(previous_frame, mv_field, block_size);
+                    if (compensated_frame != NULL) {
+                        frame_to_process = compensated_frame;
+                    }
+                }
+
+                // Free the previous frame if it exists
+                if (previous_frame != NULL) {
+                    free_grayscale_image(previous_frame);
+                    free(previous_frame);
+                }
+                // Update previous_frame for the next iteration
+                previous_frame = (grayscale_image_t*)malloc(sizeof(grayscale_image_t));
+                *previous_frame = gray_frame; // Copy current gray_frame to previous_frame
+                // Ensure to free the data if gray_frame.data was re-allocated internally somewhere
+                // (e.g., if gray_frame was a temporary variable whose data might be reallocated)
+
                 // Apply filter if specified
                 grayscale_image_t filtered = {0};
-                grayscale_image_t* to_resize = &gray_frame;
+                grayscale_image_t* to_resize = frame_to_process;
                 
                 if (filter_type != FILTER_NONE) {
                     kernel_t kernel = {0};
@@ -649,29 +750,29 @@ int main(int argc, char* argv[]) {
                             kernel = create_sharpen_kernel();
                             break;
                         case FILTER_EDGE_SOBEL:
-                            filtered = apply_sobel_edge_detection(&gray_frame);
+                            filtered = apply_sobel_edge_detection(frame_to_process);
                             to_resize = &filtered;
                             break;
                         case FILTER_EDGE_PREWITT:
-                            filtered = apply_prewitt_edge_detection(&gray_frame);
+                            filtered = apply_prewitt_edge_detection(frame_to_process);
                             to_resize = &filtered;
                             break;
                         case FILTER_EDGE_ROBERTS:
-                            filtered = apply_roberts_edge_detection(&gray_frame);
+                            filtered = apply_roberts_edge_detection(frame_to_process);
                             to_resize = &filtered;
                             break;
                         case FILTER_EDGE_LAPLACIAN:
                             kernel = create_laplacian_kernel();
                             break;
                         case FILTER_SALT_PEPPER:
-                            filtered = apply_salt_pepper_noise(&gray_frame, noise_density);
+                            filtered = apply_salt_pepper_noise(frame_to_process, noise_density);
                             to_resize = &filtered;
                             break;
                         case FILTER_IDEAL_LOWPASS:
                         case FILTER_IDEAL_HIGHPASS:
                         case FILTER_GAUSSIAN_LOWPASS:
                         case FILTER_GAUSSIAN_HIGHPASS:
-                            filtered = apply_frequency_filter(&gray_frame, filter_type, cutoff);
+                            filtered = apply_frequency_filter(frame_to_process, filter_type, cutoff);
                             to_resize = &filtered;
                             break;
                         default:
@@ -679,7 +780,7 @@ int main(int argc, char* argv[]) {
                     }
                     
                     if (kernel.data != NULL) {
-                        filtered = apply_convolution_grayscale(&gray_frame, &kernel);
+                        filtered = apply_convolution_grayscale(frame_to_process, &kernel);
                         free_kernel(&kernel);
                         if (filtered.data != NULL) {
                             to_resize = &filtered;
@@ -692,13 +793,24 @@ int main(int argc, char* argv[]) {
 
                 if (to_resize == NULL) {
                     free_grayscale_image(&gray_frame);
+                    if (mv_field) free_motion_vector_field(mv_field);
+                    if (compensated_frame) { free_grayscale_image(compensated_frame); free(compensated_frame); }
                     close_video(vid_ctx);
                     return 1;
                 }
 
                 grayscale_image_t resized_frame = make_resized_grayscale(to_resize, max_width, max_height, interpolation_method);
                 if (filtered.data != NULL) free_grayscale_image(&filtered);
-                free_grayscale_image(&gray_frame); // Free original gray_frame after processing
+                // The gray_frame data is now owned by previous_frame, do not free here if it was used for that.
+                // It will be freed in the next iteration or after the loop.
+                // But if motion compensation happened, frame_to_process is compensated_frame, and gray_frame itself needs freeing.
+                if (compensated_frame != NULL && frame_to_process == compensated_frame) {
+                    // compensated_frame will be freed after resized_frame is processed
+                } else {
+                    // gray_frame has its data copied to previous_frame, original gray_frame.data must be freed here
+                    free_grayscale_image(&gray_frame);
+                }
+
 
                 // Output processed frame to file if pattern is provided
                 if (output_file != NULL && output_frame_pattern != NULL) {
@@ -707,6 +819,8 @@ int main(int argc, char* argv[]) {
                     if (!save_grayscale_image_to_png(&resized_frame, filename)) {
                         fprintf(stderr, "Error: Failed to save frame %d to %s\n", frame_count, filename);
                         free_grayscale_image(&resized_frame);
+                        if (mv_field) free_motion_vector_field(mv_field);
+                        if (compensated_frame) { free_grayscale_image(compensated_frame); free(compensated_frame); }
                         close_video(vid_ctx);
                         return 1;
                     }
@@ -720,10 +834,16 @@ int main(int argc, char* argv[]) {
                     }
                 }
                 free_grayscale_image(&resized_frame);
+                if (mv_field) free_motion_vector_field(mv_field);
+                if (compensated_frame) { free_grayscale_image(compensated_frame); free(compensated_frame); }
                 frame_count++;
                 // Optionally add a delay here for video playback speed control
                 // usleep(1000000 / vid_ctx->fps); // Requires #include <unistd.h> and vid_ctx->fps to be populated
             }
+        }
+        if (previous_frame != NULL) {
+            free_grayscale_image(previous_frame);
+            free(previous_frame);
         }
         close_video(vid_ctx);
         return 0;

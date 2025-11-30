@@ -39,7 +39,7 @@
 * [x] Video file I/O
 * [x] Frame extraction and processing
 * [x] Temporal filtering
-* [ ] Motion models
+* [x] Motion models
 * [ ] Video sampling demonstrations
 
 **Unit 5 - Motion & Video Coding:**

@@ -40,6 +40,10 @@ Options:
   --output-frame-pattern <pattern> Save processed frames to files using a pattern (e.g., "frame_%%04d.png")
   --temporal-filter <type>   Apply a temporal filter to video frames (e.g., "average")
   --temporal-filter-size <num> Number of frames for the temporal filter (default: 3)
+  --motion-estimate          Enable motion estimation between frames
+  --motion-compensate        Enable motion compensation using estimated motion vectors
+  --block-size <num>         Block size for motion estimation (default: 8)
+  --search-window <num>      Search window size for motion estimation (default: 8)
 ```
 
 ### Examples
@@ -157,6 +161,11 @@ termiView --video input.mp4 --start-frame 5 --end-frame 20 --filter blur --outpu
 **Apply temporal averaging to a video:**
 ```bash
 termiView --video input.mp4 --temporal-filter average --temporal-filter-size 5
+```
+
+**Perform motion estimation and compensation on a video:**
+```bash
+termiView --video input.mp4 --motion-estimate --motion-compensate --block-size 16 --search-window 8
 ```
 
 **Compute the 2D DCT of an image:**
