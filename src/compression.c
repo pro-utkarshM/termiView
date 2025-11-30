@@ -705,3 +705,83 @@ unsigned char* lzw_decode(const unsigned char* encoded_data, size_t encoded_len_
 
     return (unsigned char*)decoded_data;
 }
+
+unsigned char* rle_encode(const unsigned char* data, size_t data_len, size_t* encoded_len_bytes) {
+    if (data == NULL || data_len == 0 || encoded_len_bytes == NULL) {
+        return NULL;
+    }
+
+    size_t buffer_capacity = data_len * 2; // In worst case, no compression: (1, byte), (1, byte) ...
+    unsigned char* encoded_data = (unsigned char*)malloc(buffer_capacity);
+    if (encoded_data == NULL) {
+        return NULL;
+    }
+    size_t encoded_idx = 0;
+
+    size_t i = 0;
+    while (i < data_len) {
+        unsigned char current_byte = data[i];
+        unsigned char count = 0;
+        size_t j = i;
+        while (j < data_len && data[j] == current_byte && count < 255) {
+            count++;
+            j++;
+        }
+
+        if (encoded_idx + 2 > buffer_capacity) {
+            buffer_capacity *= 2;
+            unsigned char* new_buffer = (unsigned char*)realloc(encoded_data, buffer_capacity);
+            if (new_buffer == NULL) {
+                free(encoded_data);
+                return NULL;
+            }
+            encoded_data = new_buffer;
+        }
+
+        encoded_data[encoded_idx++] = count;
+        encoded_data[encoded_idx++] = current_byte;
+        i = j;
+    }
+
+    *encoded_len_bytes = encoded_idx;
+    // Shrink to fit
+    encoded_data = (unsigned char*)realloc(encoded_data, *encoded_len_bytes);
+    return encoded_data;
+}
+
+unsigned char* rle_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, size_t* decoded_len) {
+    if (encoded_data == NULL || encoded_len_bytes == 0 || decoded_len == NULL) {
+        return NULL;
+    }
+
+    size_t buffer_capacity = encoded_len_bytes * 255; // Max possible size (e.g., all runs of 1 byte)
+    unsigned char* decoded_data = (unsigned char*)malloc(buffer_capacity);
+    if (decoded_data == NULL) {
+        return NULL;
+    }
+    size_t decoded_idx = 0;
+
+    size_t i = 0;
+    while (i < encoded_len_bytes) {
+        unsigned char count = encoded_data[i++];
+        unsigned char byte = encoded_data[i++];
+
+        for (unsigned char j = 0; j < count; j++) {
+            if (decoded_idx >= buffer_capacity) {
+                buffer_capacity *= 2;
+                unsigned char* new_buffer = (unsigned char*)realloc(decoded_data, buffer_capacity);
+                if (new_buffer == NULL) {
+                    free(decoded_data);
+                    return NULL;
+                }
+                decoded_data = new_buffer;
+            }
+            decoded_data[decoded_idx++] = byte;
+        }
+    }
+
+    *decoded_len = decoded_idx;
+    // Shrink to fit
+    decoded_data = (unsigned char*)realloc(decoded_data, *decoded_len);
+    return decoded_data;
+}

@@ -13,7 +13,8 @@ typedef enum {
     COMPRESSION_NONE,
     COMPRESSION_LZW,
     COMPRESSION_HUFFMAN,
-    COMPRESSION_ARITHMETIC
+    COMPRESSION_ARITHMETIC,
+    COMPRESSION_RLE
 } compression_type_t;
 
 #define VERSION "0.3.0"
@@ -295,6 +296,9 @@ int main(int argc, char* argv[]) {
                 case COMPRESSION_ARITHMETIC:
                     // Placeholder for Arithmetic
                     break;
+                case COMPRESSION_RLE:
+                    output_data = rle_decode(input_data, input_len, &output_len);
+                    break;
                 default:
                     break;
             }
@@ -308,6 +312,9 @@ int main(int argc, char* argv[]) {
                     break;
                 case COMPRESSION_ARITHMETIC:
                     // Placeholder for Arithmetic
+                    break;
+                case COMPRESSION_RLE:
+                    output_data = rle_encode(input_data, input_len, &output_len);
                     break;
                 default:
                     break;

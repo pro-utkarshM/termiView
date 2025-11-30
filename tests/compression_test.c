@@ -7,6 +7,7 @@
 char *test_huffman_compression_decompression();
 char *test_arithmetic_compression_decompression();
 char *test_lzw_compression_decompression();
+char *test_rle_compression_decompression();
 
 char *test_huffman_compression_decompression() {
     // Sample data
@@ -72,10 +73,34 @@ char *test_lzw_compression_decompression() {
     return 0;
 }
 
+char *test_rle_compression_decompression() {
+    unsigned char original_data[] = "AAAABBBCCDAA";
+    size_t original_len = strlen((char*)original_data);
+
+    // Encode
+    size_t encoded_len_bytes;
+    unsigned char* encoded_data = rle_encode(original_data, original_len, &encoded_len_bytes);
+    mu_assert("RLE encoded data should not be NULL", encoded_data != NULL);
+    mu_assert("RLE encoded length should be greater than 0", encoded_len_bytes > 0);
+
+    // Decode
+    size_t decoded_len;
+    unsigned char* decoded_data = rle_decode(encoded_data, encoded_len_bytes, &decoded_len);
+    mu_assert("RLE decoded data should not be NULL", decoded_data != NULL);
+    mu_assert("RLE decoded length should match original length", decoded_len == original_len);
+    mu_assert("RLE decoded data should match original data", memcmp(original_data, decoded_data, original_len) == 0);
+
+    free(encoded_data);
+    free(decoded_data);
+
+    return 0;
+}
+
 char *all_tests() {
     mu_run_test(test_huffman_compression_decompression);
     mu_run_test(test_arithmetic_compression_decompression);
     mu_run_test(test_lzw_compression_decompression);
+    mu_run_test(test_rle_compression_decompression);
     return 0;
 }
 

@@ -30,6 +30,8 @@ Options:
   -E, --equalize         Apply histogram equalization to grayscale images
   -v, --version          Show version information
   --help                 Show this help message
+  --compress <type>      Compress input file using specified algorithm: lzw, huffman, arithmetic, rle
+  --decompress <type>    Decompress input file using specified algorithm: lzw, huffman, arithmetic, rle
 ```
 
 ### Examples
@@ -87,6 +89,26 @@ termiView --filter roberts image.jpg -w 80 -h 60
 **Apply salt-and-pepper noise:**
 ```bash
 termiView --filter salt-pepper --noise 0.1 image.jpg
+```
+
+**Compress a file using LZW:**
+```bash
+termiView --compress lzw input.txt -o output.lzw
+```
+
+**Decompress a file using LZW:**
+```bash
+termiView --decompress lzw input.lzw -o output.txt
+```
+
+**Compress a file using RLE:**
+```bash
+termiView --compress rle input.bin -o output.rle
+```
+
+**Decompress a file using RLE:**
+```bash
+termiView --decompress rle input.rle -o output.bin
 ```
 
 **Compute the 2D DCT of an image:**

@@ -30,7 +30,7 @@
 * [x] Huffman coding
 * [x] Arithmetic coding
 * [x] LZW compression
-* [ ] Run-length encoding
+* [x] Run-length encoding
 * [ ] Transform coding (DCT-based)
 * [ ] JPEG encoder/decoder
 * [ ] Wavelet-based compression
