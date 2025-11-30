@@ -14,7 +14,8 @@ typedef enum {
     COMPRESSION_LZW,
     COMPRESSION_HUFFMAN,
     COMPRESSION_ARITHMETIC,
-    COMPRESSION_RLE
+    COMPRESSION_RLE,
+    COMPRESSION_DCT_BASED
 } compression_type_t;
 
 #define VERSION "0.3.0"
@@ -299,6 +300,24 @@ int main(int argc, char* argv[]) {
                 case COMPRESSION_RLE:
                     output_data = rle_decode(input_data, input_len, &output_len);
                     break;
+                case COMPRESSION_DCT_BASED:
+                    {
+                        int original_width, original_height;
+                        memcpy(&original_width, input_data, sizeof(int));
+                        memcpy(&original_height, input_data + sizeof(int), sizeof(int));
+                        
+                        grayscale_image_t* decoded_image = dct_based_decode(input_data, input_len, original_width, original_height);
+                        if (decoded_image) {
+                            output_len = decoded_image->width * decoded_image->height;
+                            output_data = (unsigned char*)malloc(output_len);
+                            if (output_data) {
+                                memcpy(output_data, decoded_image->data, output_len);
+                            }
+                            free_grayscale_image(decoded_image);
+                            free(decoded_image);
+                        }
+                    }
+                    break;
                 default:
                     break;
             }
@@ -315,6 +334,15 @@ int main(int argc, char* argv[]) {
                     break;
                 case COMPRESSION_RLE:
                     output_data = rle_encode(input_data, input_len, &output_len);
+                    break;
+                case COMPRESSION_DCT_BASED:
+                    {
+                        grayscale_image_t original_image = load_image_as_grayscale(input_file);
+                        if (original_image.data != NULL) {
+                            output_data = dct_based_encode(&original_image, &output_len);
+                            free_grayscale_image(&original_image);
+                        }
+                    }
                     break;
                 default:
                     break;

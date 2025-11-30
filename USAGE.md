@@ -30,8 +30,8 @@ Options:
   -E, --equalize         Apply histogram equalization to grayscale images
   -v, --version          Show version information
   --help                 Show this help message
-  --compress <type>      Compress input file using specified algorithm: lzw, huffman, arithmetic, rle
-  --decompress <type>    Decompress input file using specified algorithm: lzw, huffman, arithmetic, rle
+  --compress <type>      Compress input file using specified algorithm: lzw, huffman, arithmetic, rle, dct_based
+  --decompress <type>    Decompress input file using specified algorithm: lzw, huffman, arithmetic, rle, dct_based
 ```
 
 ### Examples
@@ -109,6 +109,16 @@ termiView --compress rle input.bin -o output.rle
 **Decompress a file using RLE:**
 ```bash
 termiView --decompress rle input.rle -o output.bin
+```
+
+**Compress an image using DCT-based compression:**
+```bash
+termiView --compress dct_based input.png -o output.dct
+```
+
+**Decompress an image using DCT-based compression:**
+```bash
+termiView --decompress dct_based input.dct -o output.png
 ```
 
 **Compute the 2D DCT of an image:**

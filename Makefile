@@ -77,8 +77,8 @@ test_filters: src/filters.o src/image_processing.o
 	$(CC) $(CFLAGS) -Itests tests/filters_test.c src/filters.o src/image_processing.o -o tests/filters_test $(LDFLAGS)
 	@./tests/filters_test
 
-test_compression: src/compression.o
-	$(CC) $(CFLAGS) -Itests tests/compression_test.c src/compression.o -o tests/compression_test $(LDFLAGS)
+test_compression: src/compression.o src/image_processing.o
+	$(CC) $(CFLAGS) -Itests tests/compression_test.c src/compression.o src/image_processing.o -o tests/compression_test $(LDFLAGS)
 	@./tests/compression_test
 
 .PHONY: all debug install uninstall clean distclean test test_image_processing test_frequency test_filters test_compression

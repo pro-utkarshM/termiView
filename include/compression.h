@@ -75,5 +75,18 @@ unsigned char* rle_encode(const unsigned char* data, size_t data_len, size_t* en
 // Function to decode data using Run-Length Encoding
 unsigned char* rle_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, size_t* decoded_len);
 
+#include <fftw3.h>
+#include "image_processing.h"
+
+// Functions for DCT based compression
+void compute_dct_2d(const grayscale_image_t* image, double* out_coeffs);
+void compute_idct_2d(double* in_coeffs, grayscale_image_t* out_image);
+
+// Function to encode data using DCT-based compression
+unsigned char* dct_based_encode(const grayscale_image_t* image, size_t* encoded_len_bytes);
+
+// Function to decode data using DCT-based compression
+grayscale_image_t* dct_based_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, size_t width, size_t height);
+
 
 #endif // COMPRESSION_H

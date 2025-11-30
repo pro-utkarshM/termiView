@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h> // For bool type
+#include <fftw3.h>
+#include "../include/image_processing.h"
+#include <math.h> // For round()
+
 
 // Helper function to calculate frequencies of bytes in data
 void calculate_frequencies(const unsigned char* data, size_t data_len, unsigned int* frequencies) {
@@ -785,3 +789,162 @@ unsigned char* rle_decode(const unsigned char* encoded_data, size_t encoded_len_
     decoded_data = (unsigned char*)realloc(decoded_data, *decoded_len);
     return decoded_data;
 }
+
+// Compute 2D DCT using FFTW
+void compute_dct_2d(const grayscale_image_t* image, double* out_coeffs) {
+    if (image == NULL || out_coeffs == NULL) {
+        fprintf(stderr, "Error: Invalid input to compute_dct_2d\n");
+        return;
+    }
+
+    int width = image->width;
+    int height = image->height;
+
+    double* in = (double*)fftw_malloc(sizeof(double) * width * height);
+    if (in == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for FFTW input\n");
+        return;
+    }
+
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            in[i * width + j] = (double)image->data[i * width + j] - 128.0;
+        }
+    }
+
+    fftw_plan plan = fftw_plan_r2r_2d(height, width, in, out_coeffs, FFTW_REDFT10, FFTW_REDFT10, FFTW_ESTIMATE);
+    fftw_execute(plan);
+
+    fftw_destroy_plan(plan);
+    fftw_free(in);
+
+}
+
+// Compute 2D IDCT using FFTW
+void compute_idct_2d(double* in_coeffs, grayscale_image_t* out_image) {
+    if (in_coeffs == NULL || out_image == NULL) {
+        fprintf(stderr, "Error: Invalid input to compute_idct_2d\n");
+        return;
+    }
+
+    int width = out_image->width;
+    int height = out_image->height;
+
+    double* out = (double*)fftw_malloc(sizeof(double) * width * height);
+    if (out == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for FFTW output\n");
+        return;
+    }
+
+    // For IDCT_2, FFTW_REDFT01 is the inverse of FFTW_REDFT10
+    fftw_plan plan = fftw_plan_r2r_2d(height, width, in_coeffs, out, FFTW_REDFT01, FFTW_REDFT01, FFTW_ESTIMATE);
+    fftw_execute(plan);
+
+    // Copy to output image and clamp values to 0-255
+    // Normalize by 4*width*height as IDCT is unnormalized in FFTW
+    double normalization_factor = 4.0 * width * height;
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            double val = out[i * width + j] / normalization_factor + 128.0;
+            if (val < 0.0) val = 0.0;
+            if (val > 255.0) val = 255.0;
+            out_image->data[i * width + j] = (unsigned char)round(val);
+        }
+    }
+
+    fftw_destroy_plan(plan);
+    fftw_free(out);
+}
+
+// Function to encode data using DCT-based compression
+unsigned char* dct_based_encode(const grayscale_image_t* image, size_t* encoded_len_bytes) {
+    if (image == NULL || encoded_len_bytes == NULL) {
+        return NULL;
+    }
+
+    int width = image->width;
+    int height = image->height;
+    size_t num_coeffs = width * height;
+
+    double* dct_coeffs = (double*)fftw_malloc(sizeof(double) * num_coeffs);
+    if (dct_coeffs == NULL) {
+        return NULL;
+    }
+
+    compute_dct_2d(image, dct_coeffs);
+
+    // Simple quantization: divide by a quantization step and round
+    double quantization_step = 10.0; 
+    
+    // Allocate memory for quantized coefficients (stored as char)
+    // We also need to store width and height
+    *encoded_len_bytes = sizeof(int) * 2 + num_coeffs * sizeof(char); 
+    unsigned char* encoded_data = (unsigned char*)malloc(*encoded_len_bytes);
+    if (encoded_data == NULL) {
+        fftw_free(dct_coeffs);
+        return NULL;
+    }
+
+    // Store width and height
+    memcpy(encoded_data, &width, sizeof(int));
+    memcpy(encoded_data + sizeof(int), &height, sizeof(int));
+    
+    char* quantized_coeffs = (char*)(encoded_data + sizeof(int) * 2);
+
+    for (size_t i = 0; i < num_coeffs; i++) {
+        quantized_coeffs[i] = (char)round(dct_coeffs[i] / quantization_step);
+    }
+
+    fftw_free(dct_coeffs);
+    return encoded_data;
+}
+
+// Function to decode data using DCT-based compression
+grayscale_image_t* dct_based_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, size_t width_out, size_t height_out) {
+    if (encoded_data == NULL || encoded_len_bytes == 0) {
+        return NULL;
+    }
+
+    int width, height;
+    memcpy(&width, encoded_data, sizeof(int));
+    memcpy(&height, encoded_data + sizeof(int), sizeof(int));
+    
+    if (width_out != (size_t)width || height_out != (size_t)height) {
+        fprintf(stderr, "Error: Mismatch in dimensions during DCT-based decoding.\n");
+        return NULL;
+    }
+
+    size_t num_coeffs = width * height;
+    const char* quantized_coeffs = (const char*)(encoded_data + sizeof(int) * 2);
+
+    double* dct_coeffs = (double*)fftw_malloc(sizeof(double) * num_coeffs);
+    if (dct_coeffs == NULL) {
+        return NULL;
+    }
+
+    double quantization_step = 10.0; // Must be the same as encoding
+
+    for (size_t i = 0; i < num_coeffs; i++) {
+        dct_coeffs[i] = (double)quantized_coeffs[i] * quantization_step;
+    }
+
+    grayscale_image_t* decoded_image = (grayscale_image_t*)malloc(sizeof(grayscale_image_t));
+    if (decoded_image == NULL) {
+        fftw_free(dct_coeffs);
+        return NULL;
+    }
+    decoded_image->width = width;
+    decoded_image->height = height;
+    decoded_image->data = (unsigned char*)malloc(num_coeffs);
+    if (decoded_image->data == NULL) {
+        free(decoded_image);
+        fftw_free(dct_coeffs);
+        return NULL;
+    }
+
+    compute_idct_2d(dct_coeffs, decoded_image);
+
+    fftw_free(dct_coeffs);
+    return decoded_image;
+}
+

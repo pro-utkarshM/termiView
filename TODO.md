@@ -31,7 +31,7 @@
 * [x] Arithmetic coding
 * [x] LZW compression
 * [x] Run-length encoding
-* [ ] Transform coding (DCT-based)
+* [x] Transform coding (DCT-based)
 * [ ] JPEG encoder/decoder
 * [ ] Wavelet-based compression
 
