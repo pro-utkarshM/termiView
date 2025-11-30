@@ -15,7 +15,8 @@ typedef enum {
     COMPRESSION_HUFFMAN,
     COMPRESSION_ARITHMETIC,
     COMPRESSION_RLE,
-    COMPRESSION_DCT_BASED
+    COMPRESSION_DCT_BASED,
+    COMPRESSION_JPEG
 } compression_type_t;
 
 #define VERSION "0.3.0"
@@ -340,6 +341,15 @@ int main(int argc, char* argv[]) {
                         grayscale_image_t original_image = load_image_as_grayscale(input_file);
                         if (original_image.data != NULL) {
                             output_data = dct_based_encode(&original_image, &output_len);
+                            free_grayscale_image(&original_image);
+                        }
+                    }
+                    break;
+                case COMPRESSION_JPEG:
+                    {
+                        grayscale_image_t original_image = load_image_as_grayscale(input_file);
+                        if (original_image.data != NULL) {
+                            output_data = jpeg_encode(&original_image, 50, &output_len); // Default quality 50
                             free_grayscale_image(&original_image);
                         }
                     }

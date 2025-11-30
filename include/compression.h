@@ -88,5 +88,8 @@ unsigned char* dct_based_encode(const grayscale_image_t* image, size_t* encoded_
 // Function to decode data using DCT-based compression
 grayscale_image_t* dct_based_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, size_t width, size_t height);
 
+// Function to encode grayscale image using JPEG (simplified)
+unsigned char* jpeg_encode(const grayscale_image_t* image, int quality, size_t* encoded_len_bytes);
+
 
 #endif // COMPRESSION_H

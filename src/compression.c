@@ -948,3 +948,128 @@ grayscale_image_t* dct_based_decode(const unsigned char* encoded_data, size_t en
     return decoded_image;
 }
 
+// Default JPEG Luminance Quantization Table (scaled for quality)
+static const unsigned char default_luminance_quant_table[64] = {
+    16, 11, 10, 16, 24, 40, 51, 61,
+    12, 12, 14, 19, 26, 58, 60, 55,
+    14, 13, 16, 24, 40, 57, 69, 56,
+    14, 17, 22, 29, 51, 87, 80, 62,
+    18, 22, 37, 56, 68, 109, 103, 77,
+    24, 35, 55, 64, 81, 104, 113, 92,
+    49, 64, 78, 87, 103, 121, 120, 101,
+    72, 92, 95, 98, 112, 100, 103, 99
+};
+
+// Zig-zag scan order for an 8x8 block
+static const unsigned char zigzag_order[64] = {
+     0,  1,  5,  6, 14, 15, 27, 28,
+     2,  4,  7, 13, 16, 26, 29, 42,
+     3,  8, 12, 17, 25, 30, 41, 43,
+     9, 11, 18, 24, 31, 40, 44, 53,
+    10, 19, 23, 32, 39, 45, 52, 54,
+    20, 22, 33, 38, 46, 51, 55, 60,
+    21, 34, 37, 47, 50, 56, 59, 61,
+    35, 36, 48, 49, 57, 58, 62, 63
+};
+
+
+// Function to encode grayscale image using JPEG (simplified)
+unsigned char* jpeg_encode(const grayscale_image_t* image, int quality, size_t* encoded_len_bytes) {
+    if (image == NULL || encoded_len_bytes == NULL) {
+        return NULL;
+    }
+
+    int block_size = 8;
+    int original_width = image->width;
+    int original_height = image->height;
+
+    // Pad image to be a multiple of block_size
+    int padded_width = ((original_width + block_size - 1) / block_size) * block_size;
+    int padded_height = ((original_height + block_size - 1) / block_size) * block_size;
+
+    grayscale_image_t padded_image = { .width = padded_width, .height = padded_height };
+    padded_image.data = (unsigned char*)calloc(padded_width * padded_height, sizeof(unsigned char));
+    if (padded_image.data == NULL) {
+        return NULL;
+    }
+
+    // Copy original image data to padded image, fill with 0 or replicate edge pixels
+    for (int y = 0; y < original_height; y++) {
+        memcpy(padded_image.data + y * padded_width, image->data + y * original_width, original_width);
+    }
+    // For simplicity, remaining padded areas are 0 (or could replicate edge)
+
+    int num_blocks_x = padded_width / block_size;
+    int num_blocks_y = padded_height / block_size;
+    int total_blocks = num_blocks_x * num_blocks_y;
+
+    // Quantization table scaling
+    unsigned char scaled_quant_table[64];
+    for (int i = 0; i < 64; i++) {
+        int val = (int)round(default_luminance_quant_table[i] * (5000.0 / quality));
+        if (val < 1) val = 1;
+        if (val > 255) val = 255; // Max 8-bit value
+        scaled_quant_table[i] = (unsigned char)val;
+    }
+
+    // Allocate buffer for quantized, zig-zag scanned coefficients
+    // For simplicity, we'll store all 64 coefficients per block as chars
+    size_t buffer_capacity = sizeof(int) * 2 + total_blocks * 64 * sizeof(char); // + original width/height
+    unsigned char* encoded_data = (unsigned char*)malloc(buffer_capacity);
+    if (encoded_data == NULL) {
+        free_grayscale_image(&padded_image);
+        return NULL;
+    }
+    size_t current_encoded_idx = 0;
+
+    // Store original width and height first
+    memcpy(encoded_data + current_encoded_idx, &original_width, sizeof(int));
+    current_encoded_idx += sizeof(int);
+    memcpy(encoded_data + current_encoded_idx, &original_height, sizeof(int));
+    current_encoded_idx += sizeof(int);
+
+
+    double block_coeffs[64];
+    char quantized_block[64];
+
+    for (int by = 0; by < num_blocks_y; by++) {
+        for (int bx = 0; bx < num_blocks_x; bx++) {
+            // Extract 8x8 block
+            grayscale_image_t current_block = { .width = block_size, .height = block_size };
+            current_block.data = (unsigned char*)malloc(block_size * block_size);
+            if (current_block.data == NULL) {
+                free_grayscale_image(&padded_image);
+                free(encoded_data);
+                return NULL;
+            }
+
+            for (int y = 0; y < block_size; y++) {
+                for (int x = 0; x < block_size; x++) {
+                    current_block.data[y * block_size + x] = padded_image.data[(by * block_size + y) * padded_width + (bx * block_size + x)];
+                }
+            }
+
+            // Compute DCT for the block
+            compute_dct_2d(&current_block, block_coeffs);
+
+            // Quantize
+            for (int i = 0; i < 64; i++) {
+                quantized_block[i] = (char)round(block_coeffs[i] / scaled_quant_table[i]);
+            }
+
+            // Zig-zag scan and store
+            for (int i = 0; i < 64; i++) {
+                encoded_data[current_encoded_idx++] = quantized_block[zigzag_order[i]];
+            }
+            free(current_block.data);
+        }
+    }
+
+    free_grayscale_image(&padded_image);
+    *encoded_len_bytes = current_encoded_idx;
+
+    // Shrink to fit
+    encoded_data = (unsigned char*)realloc(encoded_data, *encoded_len_bytes);
+    return encoded_data;
+}
+

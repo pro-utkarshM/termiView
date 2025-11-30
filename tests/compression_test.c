@@ -9,6 +9,7 @@ char *test_arithmetic_compression_decompression();
 char *test_lzw_compression_decompression();
 char *test_rle_compression_decompression();
 char *test_dct_based_compression_decompression();
+char *test_jpeg_grayscale_compression();
 
 char *test_huffman_compression_decompression() {
     // Sample data
@@ -136,8 +137,37 @@ char *test_dct_based_compression_decompression() {
     // Cleanup
     free(original_image.data);
     free(encoded_data);
-    free_grayscale_image(decoded_image);
+    free(decoded_image->data);
     free(decoded_image);
+
+    return 0;
+}
+
+char *test_jpeg_grayscale_compression() {
+    int width = 16;
+    int height = 16;
+    grayscale_image_t original_image = { .width = width, .height = height };
+    original_image.data = (unsigned char*)malloc(width * height);
+    mu_assert("Original image data allocation failed", original_image.data != NULL);
+
+    // Create a simple gradient image for testing
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            original_image.data[i * width + j] = (unsigned char)(i * 10 + j * 5);
+        }
+    }
+
+    // Encode
+    size_t encoded_len_bytes;
+    unsigned char* encoded_data = jpeg_encode(&original_image, 50, &encoded_len_bytes); // Quality 50
+    mu_assert("JPEG encoded data should not be NULL", encoded_data != NULL);
+    mu_assert("JPEG encoded length should be greater than 0", encoded_len_bytes > 0);
+
+    // No decoding part yet, just testing encoding
+    
+    // Cleanup
+    free(original_image.data);
+    free(encoded_data);
 
     return 0;
 }
@@ -148,6 +178,7 @@ char *all_tests() {
     mu_run_test(test_lzw_compression_decompression);
     mu_run_test(test_rle_compression_decompression);
     mu_run_test(test_dct_based_compression_decompression);
+    mu_run_test(test_jpeg_grayscale_compression);
     return 0;
 }
 

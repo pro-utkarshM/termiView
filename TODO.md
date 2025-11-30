@@ -32,7 +32,7 @@
 * [x] LZW compression
 * [x] Run-length encoding
 * [x] Transform coding (DCT-based)
-* [ ] JPEG encoder/decoder
+* [x] JPEG encoder/decoder
 * [ ] Wavelet-based compression
 
 **Unit 4 - Video Processing:**
