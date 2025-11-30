@@ -44,7 +44,7 @@
 
 **Unit 5 - Motion & Video Coding:**
 * [x] Optical flow computation
-* [ ] Block matching algorithms
-* [ ] Motion estimation techniques
+* [x] Block matching algorithms
+* [x] Motion estimation techniques
 * [ ] Video compression (predictive coding)
 * [ ] Motion-compensated prediction

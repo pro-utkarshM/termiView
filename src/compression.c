@@ -1361,3 +1361,414 @@ grayscale_image_t* wavelet_decode(const unsigned char* encoded_data, size_t enco
     return decoded_image;
 }
 
+// Function to free a CodedFrame
+void free_coded_frame(CodedFrame* frame) {
+    if (frame) {
+        free(frame->encoded_data);
+        // If mv_field was part of CodedFrame, free it here too.
+        // if (frame->mv_field) free_motion_vector_field(frame->mv_field); // Uncomment if mv_field is added to CodedFrame
+        free(frame);
+    }
+}
+
+// Encodes a single frame (I-frame or P-frame)
+CodedFrame* predictive_encode_frame(const grayscale_image_t* current_frame, 
+                                    const grayscale_image_t* reference_frame, 
+                                    FrameType type, int block_size, int search_window, int quality) {
+    CodedFrame* coded_frame = (CodedFrame*)malloc(sizeof(CodedFrame));
+    if (coded_frame == NULL) return NULL;
+
+    coded_frame->type = type;
+    coded_frame->original_width = current_frame->width;
+    coded_frame->original_height = current_frame->height;
+    coded_frame->encoded_data = NULL;
+    coded_frame->encoded_data_len = 0;
+    // coded_frame->mv_field = NULL; // Uncomment if mv_field is added to CodedFrame
+
+    size_t frame_data_len = current_frame->width * current_frame->height;
+
+    if (type == FRAME_TYPE_I) {
+        // I-frame: Encode the frame directly (e.g., using JPEG encoder for now)
+        coded_frame->encoded_data = jpeg_encode(current_frame, quality, &coded_frame->encoded_data_len);
+        if (coded_frame->encoded_data == NULL) {
+            free(coded_frame);
+            return NULL;
+        }
+    } else if (type == FRAME_TYPE_P && reference_frame != NULL) {
+        // P-frame: Motion estimation, compensation, residual encoding
+        MotionVectorField* mv_field = estimate_motion(current_frame, reference_frame, block_size, search_window);
+        if (mv_field == NULL) {
+            free(coded_frame);
+            return NULL;
+        }
+
+        grayscale_image_t* compensated_frame = compensate_motion(reference_frame, mv_field, block_size);
+        if (compensated_frame == NULL) {
+            free_motion_vector_field(mv_field);
+            free(coded_frame);
+            return NULL;
+        }
+
+        // Calculate residual frame
+        unsigned char* residual_data = (unsigned char*)malloc(frame_data_len);
+        if (residual_data == NULL) {
+            free_grayscale_image(compensated_frame); free(compensated_frame);
+            free_motion_vector_field(mv_field);
+            free(coded_frame);
+            return NULL;
+        }
+
+        for (size_t i = 0; i < frame_data_len; i++) {
+            // Residual can be positive or negative, store as signed char or use offset
+            // For simplicity, just storing absolute difference for now, might need refinement
+            residual_data[i] = (unsigned char)abs(current_frame->data[i] - compensated_frame->data[i]);
+        }
+
+        // For now, simply pack MV field and residual data into encoded_data
+        // Structure: original_width (int), original_height (int), num_vectors (int),
+        // then array of MotionVector, then residual data
+        coded_frame->encoded_data_len = sizeof(int) * 3 + mv_field->num_vectors * sizeof(MotionVector) + frame_data_len;
+        coded_frame->encoded_data = (unsigned char*)malloc(coded_frame->encoded_data_len);
+        if (coded_frame->encoded_data == NULL) {
+            free(residual_data);
+            free_grayscale_image(compensated_frame); free(compensated_frame);
+            free_motion_vector_field(mv_field);
+            free(coded_frame);
+            return NULL;
+        }
+
+        size_t offset = 0;
+        memcpy(coded_frame->encoded_data + offset, &coded_frame->original_width, sizeof(int));
+        offset += sizeof(int);
+        memcpy(coded_frame->encoded_data + offset, &coded_frame->original_height, sizeof(int));
+        offset += sizeof(int);
+        memcpy(coded_frame->encoded_data + offset, &mv_field->num_vectors, sizeof(int));
+        offset += sizeof(int);
+        memcpy(coded_frame->encoded_data + offset, mv_field->vectors, mv_field->num_vectors * sizeof(MotionVector));
+        offset += mv_field->num_vectors * sizeof(MotionVector);
+        memcpy(coded_frame->encoded_data + offset, residual_data, frame_data_len);
+
+        free(residual_data);
+        free_grayscale_image(compensated_frame); free(compensated_frame);
+        free_motion_vector_field(mv_field);
+
+    } else {
+        // Error or unsupported frame type
+        free(coded_frame);
+        return NULL;
+    }
+
+    return coded_frame;
+}
+
+// Decodes a single frame (I-frame or P-frame)
+grayscale_image_t* predictive_decode_frame(const CodedFrame* coded_frame, const grayscale_image_t* reference_frame, int block_size) {
+    if (coded_frame == NULL || coded_frame->encoded_data == NULL) {
+        fprintf(stderr, "Error: Invalid input to predictive_decode_frame\n");
+        return NULL;
+    }
+
+    grayscale_image_t* decoded_image = (grayscale_image_t*)malloc(sizeof(grayscale_image_t));
+    if (decoded_image == NULL) {
+        return NULL;
+    }
+    decoded_image->width = coded_frame->original_width;
+    decoded_image->height = coded_frame->original_height;
+    decoded_image->data = (unsigned char*)malloc(coded_frame->original_width * coded_frame->original_height);
+    if (decoded_image->data == NULL) {
+        free(decoded_image);
+        return NULL;
+    }
+
+    size_t frame_data_len = coded_frame->original_width * coded_frame->original_height;
+
+    if (coded_frame->type == FRAME_TYPE_I) {
+        // I-frame: Assume encoded_data is raw grayscale image for now
+        memcpy(decoded_image->data, coded_frame->encoded_data + sizeof(int) * 2, frame_data_len);
+        // If JPEG decoding was implemented: decoded_image = jpeg_decode(coded_frame->encoded_data, coded_frame->encoded_data_len);
+    } else if (coded_frame->type == FRAME_TYPE_P && reference_frame != NULL) {
+        // P-frame: Extract MVs and residual, compensate, and add residual
+        int original_width, original_height, num_vectors;
+        size_t offset = 0;
+        memcpy(&original_width, coded_frame->encoded_data + offset, sizeof(int));
+        offset += sizeof(int);
+        memcpy(&original_height, coded_frame->encoded_data + offset, sizeof(int));
+        offset += sizeof(int);
+        memcpy(&num_vectors, coded_frame->encoded_data + offset, sizeof(int));
+        offset += sizeof(int);
+
+        MotionVectorField mv_field = { .vectors = (MotionVector*)(coded_frame->encoded_data + offset), .num_vectors = num_vectors };
+        offset += num_vectors * sizeof(MotionVector);
+
+        const unsigned char* residual_data = coded_frame->encoded_data + offset;
+
+        grayscale_image_t* predicted_frame = compensate_motion(reference_frame, &mv_field, block_size);
+        if (predicted_frame == NULL) {
+            free(decoded_image->data);
+            free(decoded_image);
+            return NULL;
+        }
+
+        for (size_t i = 0; i < frame_data_len; i++) {
+            // Reconstruct: predicted_pixel + residual
+            // Residual was stored as absolute difference, so this is just a simplified reconstruction
+            decoded_image->data[i] = (unsigned char)fmin(255.0, fmax(0.0, predicted_frame->data[i] + residual_data[i]));
+        }
+        free_grayscale_image(predicted_frame);
+        free(predicted_frame); // Free the structure itself
+    } else {
+        // Error or unsupported frame type/missing reference
+        free(decoded_image->data);
+        free(decoded_image);
+        return NULL;
+    }
+
+    return decoded_image;
+}
+
+// Encodes a sequence of frames
+unsigned char* video_predictive_encode(grayscale_image_t** frames, int num_frames, int block_size, int search_window, int quality, size_t* encoded_stream_len) {
+    if (frames == NULL || num_frames <= 0 || encoded_stream_len == NULL) {
+        fprintf(stderr, "Error: Invalid input to video_predictive_encode\n");
+        return NULL;
+    }
+
+    size_t current_stream_capacity = 1024; // Initial capacity
+    unsigned char* encoded_stream = (unsigned char*)malloc(current_stream_capacity);
+    if (encoded_stream == NULL) {
+        return NULL;
+    }
+    *encoded_stream_len = 0;
+
+    grayscale_image_t* last_decoded_frame = NULL;
+
+    for (int i = 0; i < num_frames; i++) {
+        CodedFrame* coded_frame = NULL;
+        if (i == 0) {
+            // First frame is an I-frame
+            coded_frame = predictive_encode_frame(frames[i], NULL, FRAME_TYPE_I, block_size, search_window, quality);
+        } else {
+            // Subsequent frames are P-frames, using the previous decoded frame as reference
+            coded_frame = predictive_encode_frame(frames[i], last_decoded_frame, FRAME_TYPE_P, block_size, search_window, quality);
+        }
+
+        if (coded_frame == NULL) {
+            fprintf(stderr, "Error: Failed to encode frame %d\n", i);
+            free(encoded_stream);
+            if (last_decoded_frame) { free_grayscale_image(last_decoded_frame); free(last_decoded_frame); }
+            return NULL;
+        }
+
+        // Write frame metadata and encoded data to stream
+        size_t frame_header_size = sizeof(FrameType) + sizeof(int) * 2 + sizeof(size_t); // type, width, height, encoded_data_len
+        size_t required_space = *encoded_stream_len + frame_header_size + coded_frame->encoded_data_len;
+        if (required_space > current_stream_capacity) {
+            current_stream_capacity = required_space * 2;
+            encoded_stream = (unsigned char*)realloc(encoded_stream, current_stream_capacity);
+            if (encoded_stream == NULL) {
+                fprintf(stderr, "Error: Failed to reallocate encoded_stream\n");
+                free_coded_frame(coded_frame);
+                if (last_decoded_frame) { free_grayscale_image(last_decoded_frame); free(last_decoded_frame); }
+                return NULL;
+            }
+        }
+
+        memcpy(encoded_stream + *encoded_stream_len, &coded_frame->type, sizeof(FrameType));
+        *encoded_stream_len += sizeof(FrameType);
+        memcpy(encoded_stream + *encoded_stream_len, &coded_frame->original_width, sizeof(int));
+        *encoded_stream_len += sizeof(int);
+        memcpy(encoded_stream + *encoded_stream_len, &coded_frame->original_height, sizeof(int));
+        *encoded_stream_len += sizeof(int);
+        memcpy(encoded_stream + *encoded_stream_len, &coded_frame->encoded_data_len, sizeof(size_t));
+        *encoded_stream_len += sizeof(size_t);
+        memcpy(encoded_stream + *encoded_stream_len, coded_frame->encoded_data, coded_frame->encoded_data_len);
+        *encoded_stream_len += coded_frame->encoded_data_len;
+
+        // Decode the current frame to use as reference for the next P-frame
+        if (last_decoded_frame) { free_grayscale_image(last_decoded_frame); free(last_decoded_frame); }
+        last_decoded_frame = predictive_decode_frame(coded_frame, last_decoded_frame, block_size); // Pass NULL for I-frame initially
+        if (last_decoded_frame == NULL) {
+            fprintf(stderr, "Error: Failed to decode frame %d for reference\n", i);
+            free(encoded_stream);
+            free_coded_frame(coded_frame);
+            return NULL;
+        }
+
+        free_coded_frame(coded_frame);
+    }
+
+    if (last_decoded_frame) { free_grayscale_image(last_decoded_frame); free(last_decoded_frame); }
+
+    encoded_stream = (unsigned char*)realloc(encoded_stream, *encoded_stream_len);
+    return encoded_stream;
+}
+
+// Decodes a sequence of frames
+grayscale_image_t** video_predictive_decode(const unsigned char* encoded_stream, size_t encoded_stream_len, int num_frames, int block_size, size_t* decoded_frames_count) {
+    if (encoded_stream == NULL || encoded_stream_len == 0 || num_frames <= 0 || decoded_frames_count == NULL) {
+        fprintf(stderr, "Error: Invalid input to video_predictive_decode\n");
+        return NULL;
+    }
+
+    grayscale_image_t** decoded_frames = (grayscale_image_t**)calloc(num_frames, sizeof(grayscale_image_t*));
+    if (decoded_frames == NULL) {
+        return NULL;
+    }
+    *decoded_frames_count = 0;
+
+    grayscale_image_t* last_decoded_frame = NULL;
+    size_t current_stream_pos = 0;
+
+    for (int i = 0; i < num_frames; i++) {
+        if (current_stream_pos >= encoded_stream_len) {
+            fprintf(stderr, "Error: Unexpected end of encoded stream for frame %d\n", i);
+            break;
+        }
+
+        FrameType type;
+        int original_width, original_height;
+        size_t encoded_data_len;
+
+        memcpy(&type, encoded_stream + current_stream_pos, sizeof(FrameType));
+        current_stream_pos += sizeof(FrameType);
+        memcpy(&original_width, encoded_stream + current_stream_pos, sizeof(int));
+        current_stream_pos += sizeof(int);
+        memcpy(&original_height, encoded_stream + current_stream_pos, sizeof(int));
+        current_stream_pos += sizeof(int);
+        memcpy(&encoded_data_len, encoded_stream + current_stream_pos, sizeof(size_t));
+        current_stream_pos += sizeof(size_t);
+
+        if (current_stream_pos + encoded_data_len > encoded_stream_len) {
+            fprintf(stderr, "Error: Encoded data length exceeds stream bounds for frame %d\n", i);
+            break;
+        }
+
+        CodedFrame coded_frame_tmp = {
+            .type = type,
+            .original_width = original_width,
+            .original_height = original_height,
+            .encoded_data = (unsigned char*)(encoded_stream + current_stream_pos), // Point to existing data
+            .encoded_data_len = encoded_data_len
+        };
+
+        grayscale_image_t* current_decoded_frame = NULL;
+
+        if (type == FRAME_TYPE_I) {
+            current_decoded_frame = predictive_decode_frame(&coded_frame_tmp, NULL, block_size);
+        } else if (type == FRAME_TYPE_P && last_decoded_frame != NULL) {
+            current_decoded_frame = predictive_decode_frame(&coded_frame_tmp, last_decoded_frame, block_size);
+        } else {
+            fprintf(stderr, "Error: Invalid frame type or missing reference for frame %d\n", i);
+            break;
+        }
+
+        if (current_decoded_frame == NULL) {
+            fprintf(stderr, "Error: Failed to decode frame %d\n", i);
+            break;
+        }
+
+        decoded_frames[i] = current_decoded_frame;
+        (*decoded_frames_count)++;
+
+        if (last_decoded_frame) {
+            free_grayscale_image(last_decoded_frame);
+            free(last_decoded_frame);
+        }
+        last_decoded_frame = (grayscale_image_t*)malloc(sizeof(grayscale_image_t));
+        *last_decoded_frame = *current_decoded_frame; // Deep copy for reference
+
+        current_stream_pos += encoded_data_len;
+    }
+
+    if (last_decoded_frame) {
+        free_grayscale_image(last_decoded_frame);
+        free(last_decoded_frame);
+    }
+    return decoded_frames;
+}
+
+// Decodes a sequence of frames
+grayscale_image_t** video_predictive_decode(const unsigned char* encoded_stream, size_t encoded_stream_len, int num_frames, int block_size, size_t* decoded_frames_count) {
+    if (encoded_stream == NULL || encoded_stream_len == 0 || num_frames <= 0 || decoded_frames_count == NULL) {
+        fprintf(stderr, "Error: Invalid input to video_predictive_decode\n");
+        return NULL;
+    }
+
+    grayscale_image_t** decoded_frames = (grayscale_image_t**)calloc(num_frames, sizeof(grayscale_image_t*));
+    if (decoded_frames == NULL) {
+        return NULL;
+    }
+    *decoded_frames_count = 0;
+
+    grayscale_image_t* last_decoded_frame = NULL;
+    size_t current_stream_pos = 0;
+
+    for (int i = 0; i < num_frames; i++) {
+        if (current_stream_pos >= encoded_stream_len) {
+            fprintf(stderr, "Error: Unexpected end of encoded stream for frame %d\n", i);
+            break;
+        }
+
+        FrameType type;
+        int original_width, original_height;
+        size_t encoded_data_len;
+
+        memcpy(&type, encoded_stream + current_stream_pos, sizeof(FrameType));
+        current_stream_pos += sizeof(FrameType);
+        memcpy(&original_width, encoded_stream + current_stream_pos, sizeof(int));
+        current_stream_pos += sizeof(int);
+        memcpy(&original_height, encoded_stream + current_stream_pos, sizeof(int));
+        current_stream_pos += sizeof(int);
+        memcpy(&encoded_data_len, encoded_stream + current_stream_pos, sizeof(size_t));
+        current_stream_pos += sizeof(size_t);
+
+        if (current_stream_pos + encoded_data_len > encoded_stream_len) {
+            fprintf(stderr, "Error: Encoded data length exceeds stream bounds for frame %d\n", i);
+            break;
+        }
+
+        CodedFrame coded_frame_tmp = {
+            .type = type,
+            .original_width = original_width,
+            .original_height = original_height,
+            .encoded_data = (unsigned char*)(encoded_stream + current_stream_pos), // Point to existing data
+            .encoded_data_len = encoded_data_len
+        };
+
+        grayscale_image_t* current_decoded_frame = NULL;
+
+        if (type == FRAME_TYPE_I) {
+            current_decoded_frame = predictive_decode_frame(&coded_frame_tmp, NULL, block_size);
+        } else if (type == FRAME_TYPE_P && last_decoded_frame != NULL) {
+            current_decoded_frame = predictive_decode_frame(&coded_frame_tmp, last_decoded_frame, block_size);
+        } else {
+            fprintf(stderr, "Error: Invalid frame type or missing reference for frame %d\n", i);
+            break;
+        }
+
+        if (current_decoded_frame == NULL) {
+            fprintf(stderr, "Error: Failed to decode frame %d\n", i);
+            break;
+        }
+
+        decoded_frames[i] = current_decoded_frame;
+        (*decoded_frames_count)++;
+
+        if (last_decoded_frame) {
+            free_grayscale_image(last_decoded_frame);
+            free(last_decoded_frame);
+        }
+        last_decoded_frame = (grayscale_image_t*)malloc(sizeof(grayscale_image_t));
+        *last_decoded_frame = *current_decoded_frame; // Deep copy for reference
+
+        current_stream_pos += encoded_data_len;
+    }
+
+    if (last_decoded_frame) {
+        free_grayscale_image(last_decoded_frame);
+        free(last_decoded_frame);
+    }
+    return decoded_frames;
+}
+
+

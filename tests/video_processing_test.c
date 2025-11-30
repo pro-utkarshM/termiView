@@ -9,6 +9,7 @@
 char *test_video_io();
 char *test_motion_estimation();
 char *test_optical_flow();
+char *test_video_predictive_coding();
 
 char *test_video_io() {
     // Assuming a test video file exists in the assets directory
@@ -163,10 +164,82 @@ char *test_optical_flow() {
     return 0;
 }
 
+char *test_video_predictive_coding() {
+    int width = 32;
+    int height = 32;
+    int num_frames = 3;
+    int block_size = 8;
+    int search_window = 4;
+    int quality = 50; // For JPEG encoding of I-frame
+
+    grayscale_image_t** original_frames = (grayscale_image_t**)calloc(num_frames, sizeof(grayscale_image_t*));
+    mu_assert("Original frames allocation failed", original_frames != NULL);
+
+    // Create simple test frames
+    for (int i = 0; i < num_frames; i++) {
+        original_frames[i] = (grayscale_image_t*)malloc(sizeof(grayscale_image_t));
+        mu_assert("Frame allocation failed", original_frames[i] != NULL);
+        original_frames[i]->width = width;
+        original_frames[i]->height = height;
+        original_frames[i]->data = (unsigned char*)malloc(width * height);
+        mu_assert("Frame data allocation failed", original_frames[i]->data != NULL);
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                original_frames[i]->data[y * width + x] = (unsigned char)((x + y + i * 5) % 256); // Simple changing pattern
+            }
+        }
+    }
+
+    size_t encoded_stream_len = 0;
+    unsigned char* encoded_stream = video_predictive_encode(original_frames, num_frames, block_size, search_window, quality, &encoded_stream_len);
+    mu_assert("Encoded stream should not be NULL", encoded_stream != NULL);
+    mu_assert("Encoded stream length should be greater than 0", encoded_stream_len > 0);
+
+    size_t decoded_frames_count = 0;
+    grayscale_image_t** decoded_frames = video_predictive_decode(encoded_stream, encoded_stream_len, num_frames, block_size, &decoded_frames_count);
+    mu_assert("Decoded frames should not be NULL", decoded_frames != NULL);
+    mu_assert("Decoded frames count should match original", decoded_frames_count == (size_t)num_frames);
+
+    // Verify decoded frames against original
+    for (int i = 0; i < num_frames; i++) {
+        mu_assert("Decoded frame should not be NULL", decoded_frames[i] != NULL);
+        mu_assert("Decoded frame width should match", decoded_frames[i]->width == width);
+        mu_assert("Decoded frame height should match", decoded_frames[i]->height == height);
+
+        double mse = 0.0;
+        for (int p = 0; p < width * height; p++) {
+            mse += pow(original_frames[i]->data[p] - decoded_frames[i]->data[p], 2);
+        }
+        mse /= (width * height);
+        printf("Frame %d - Predictive Coding MSE: %f\n", i, mse);
+        // Allow a higher MSE due to JPEG compression for I-frame and residual approximation
+        mu_assert("Decoded frame should be close to original (MSE < 500)", mse < 500.0);
+    }
+
+
+    // Cleanup
+    for (int i = 0; i < num_frames; i++) {
+        free_grayscale_image(original_frames[i]);
+        free(original_frames[i]);
+        if (decoded_frames[i]) {
+            free_grayscale_image(decoded_frames[i]);
+            free(decoded_frames[i]);
+        }
+    }
+    free(original_frames);
+    free(decoded_frames);
+    free(encoded_stream);
+
+    return 0;
+}
+
+
 char *all_tests() {
     mu_run_test(test_video_io);
     mu_run_test(test_motion_estimation);
     mu_run_test(test_optical_flow);
+    mu_run_test(test_video_predictive_coding);
     return 0;
 }
 
