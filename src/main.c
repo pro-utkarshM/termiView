@@ -7,6 +7,14 @@
 #include "../include/color_output.h"
 #include "../include/filters.h"
 #include "../include/frequency.h"
+#include "../include/compression.h"
+
+typedef enum {
+    COMPRESSION_NONE,
+    COMPRESSION_LZW,
+    COMPRESSION_HUFFMAN,
+    COMPRESSION_ARITHMETIC
+} compression_type_t;
 
 #define VERSION "0.3.0"
 #define DEFAULT_MAX_WIDTH 64
@@ -83,6 +91,8 @@ int main(int argc, char* argv[]) {
     bool equalize_mode = false;
     float noise_density = 0.0f;
     double cutoff = 20.0; // Default cutoff frequency
+    compression_type_t compression_type = COMPRESSION_NONE;
+    bool decompress_mode = false;
 
     // Long options
     static struct option long_options[] = {
@@ -105,6 +115,8 @@ int main(int argc, char* argv[]) {
         {"version", no_argument,       0, 'v'},
         {"help",    no_argument,       0,  0 },
         {"cutoff",  required_argument, 0,  1 },
+        {"compress", required_argument, 0, 2},
+        {"decompress", required_argument, 0, 3},
         {0, 0, 0, 0}
     };
 
@@ -125,10 +137,35 @@ int main(int argc, char* argv[]) {
                     cutoff = atof(optarg);
                 }
                 break;
+            case 2:
+                if(strcmp(optarg, "lzw") == 0) {
+                    compression_type = COMPRESSION_LZW;
+                } else if (strcmp(optarg, "huffman") == 0) {
+                    compression_type = COMPRESSION_HUFFMAN;
+                } else if (strcmp(optarg, "arithmetic") == 0) {
+                    compression_type = COMPRESSION_ARITHMETIC;
+                } else {
+                    fprintf(stderr, "Error: Unknown compression type '%s'\\n", optarg);
+                    return 1;
+                }
+                break;
+            case 3:
+                decompress_mode = true;
+                if(strcmp(optarg, "lzw") == 0) {
+                    compression_type = COMPRESSION_LZW;
+                } else if (strcmp(optarg, "huffman") == 0) {
+                    compression_type = COMPRESSION_HUFFMAN;
+                } else if (strcmp(optarg, "arithmetic") == 0) {
+                    compression_type = COMPRESSION_ARITHMETIC;
+                } else {
+                    fprintf(stderr, "Error: Unknown compression type '%s'\\n", optarg);
+                    return 1;
+                }
+                break;
             case 'w':
                 max_width = (size_t) atoi(optarg);
                 if (max_width == 0) {
-                    fprintf(stderr, "Error: Invalid width value\n");
+                    fprintf(stderr, "Error: Invalid width value\\n");
                     return 1;
                 }
                 break;
@@ -223,6 +260,75 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Error: No input image specified\n");
         fprintf(stderr, "Try '%s --help' for more information.\n", argv[0]);
         return 1;
+    }
+
+    if (compression_type != COMPRESSION_NONE) {
+        if (!input_file || !output_file) {
+            fprintf(stderr, "Error: Both input and output files must be specified for compression/decompression.\n");
+            return 1;
+        }
+
+        FILE* in = fopen(input_file, "rb");
+        if (!in) {
+            fprintf(stderr, "Error: Cannot open input file '%s'.\n", input_file);
+            return 1;
+        }
+
+        fseek(in, 0, SEEK_END);
+        size_t input_len = ftell(in);
+        fseek(in, 0, SEEK_SET);
+        unsigned char* input_data = (unsigned char*)malloc(input_len);
+        fread(input_data, 1, input_len, in);
+        fclose(in);
+
+        unsigned char* output_data = NULL;
+        size_t output_len = 0;
+
+        if (decompress_mode) {
+            switch (compression_type) {
+                case COMPRESSION_LZW:
+                    output_data = lzw_decode(input_data, input_len, &output_len);
+                    break;
+                case COMPRESSION_HUFFMAN:
+                    // Placeholder for Huffman
+                    break;
+                case COMPRESSION_ARITHMETIC:
+                    // Placeholder for Arithmetic
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            switch (compression_type) {
+                case COMPRESSION_LZW:
+                    output_data = lzw_encode(input_data, input_len, &output_len);
+                    break;
+                case COMPRESSION_HUFFMAN:
+                    // Placeholder for Huffman
+                    break;
+                case COMPRESSION_ARITHMETIC:
+                    // Placeholder for Arithmetic
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (output_data) {
+            FILE* out = fopen(output_file, "wb");
+            if (!out) {
+                fprintf(stderr, "Error: Cannot open output file '%s'.\n", output_file);
+                free(input_data);
+                free(output_data);
+                return 1;
+            }
+            fwrite(output_data, 1, output_len, out);
+            fclose(out);
+            free(output_data);
+        }
+
+        free(input_data);
+        return 0;
     }
 
     // Handle connectivity mode separately

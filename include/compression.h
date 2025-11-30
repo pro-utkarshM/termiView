@@ -63,5 +63,17 @@ unsigned char* arithmetic_encode(const unsigned char* data, size_t data_len,
 unsigned char* arithmetic_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, 
                                  const unsigned int* frequencies, size_t data_len, size_t* decoded_len);
 
+// Function to encode data using LZW compression
+unsigned char* lzw_encode(const unsigned char* data, size_t data_len, size_t* encoded_len_bytes);
+
+// Function to decode data using LZW compression
+unsigned char* lzw_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, size_t* decoded_len);
+
+// Function to encode data using Run-Length Encoding
+unsigned char* rle_encode(const unsigned char* data, size_t data_len, size_t* encoded_len_bytes);
+
+// Function to decode data using Run-Length Encoding
+unsigned char* rle_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, size_t* decoded_len);
+
 
 #endif // COMPRESSION_H

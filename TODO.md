@@ -29,7 +29,7 @@
 **Unit 3 - Compression:**
 * [x] Huffman coding
 * [x] Arithmetic coding
-* [ ] LZW compression
+* [x] LZW compression
 * [ ] Run-length encoding
 * [ ] Transform coding (DCT-based)
 * [ ] JPEG encoder/decoder

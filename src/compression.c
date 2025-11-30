@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include "../include/compression.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -539,4 +540,168 @@ unsigned char* arithmetic_decode(const unsigned char* encoded_data, size_t encod
     }
     *decoded_len = data_len;
     return decoded_data;
+}
+
+#define LZW_MAX_DICT_SIZE 4096
+#define LZW_CODE_BIT_LEN 12
+
+typedef struct {
+    char* string;
+    int code;
+} LZWDictEntry;
+
+typedef struct {
+    LZWDictEntry* entries;
+    int size;
+} LZWDictionary;
+
+static LZWDictionary* create_lzw_dictionary() {
+    LZWDictionary* dict = (LZWDictionary*)malloc(sizeof(LZWDictionary));
+    dict->entries = (LZWDictEntry*)malloc(sizeof(LZWDictEntry) * LZW_MAX_DICT_SIZE);
+    dict->size = 0;
+    for (int i = 0; i < 256; i++) {
+        dict->entries[i].string = (char*)malloc(2);
+        dict->entries[i].string[0] = (char)i;
+        dict->entries[i].string[1] = '\0';
+        dict->entries[i].code = i;
+        dict->size++;
+    }
+    return dict;
+}
+
+static void free_lzw_dictionary(LZWDictionary* dict) {
+    if (dict) {
+        for (int i = 0; i < dict->size; i++) {
+            free(dict->entries[i].string);
+        }
+        free(dict->entries);
+        free(dict);
+    }
+}
+
+static int find_in_lzw_dictionary(LZWDictionary* dict, const char* str) {
+    for (int i = 0; i < dict->size; i++) {
+        if (strcmp(dict->entries[i].string, str) == 0) {
+            return dict->entries[i].code;
+        }
+    }
+    return -1;
+}
+
+static void add_to_lzw_dictionary(LZWDictionary* dict, const char* str) {
+    if (dict->size < LZW_MAX_DICT_SIZE) {
+        dict->entries[dict->size].string = strdup(str);
+        dict->entries[dict->size].code = dict->size;
+        dict->size++;
+    }
+}
+
+unsigned char* lzw_encode(const unsigned char* data, size_t data_len, size_t* encoded_len_bytes) {
+    LZWDictionary* dict = create_lzw_dictionary();
+    unsigned int* output = (unsigned int*)malloc(sizeof(unsigned int) * data_len);
+    int output_size = 0;
+
+    char* current_str = (char*)malloc(data_len + 1);
+    current_str[0] = '\0';
+
+    for (size_t i = 0; i < data_len; i++) {
+        char new_char[2] = {data[i], '\0'};
+        char* new_str = (char*)malloc(strlen(current_str) + 2);
+        strcpy(new_str, current_str);
+        strcat(new_str, new_char);
+
+        if (find_in_lzw_dictionary(dict, new_str) != -1) {
+            strcpy(current_str, new_str);
+        } else {
+            output[output_size++] = find_in_lzw_dictionary(dict, current_str);
+            add_to_lzw_dictionary(dict, new_str);
+            strcpy(current_str, new_char);
+        }
+        free(new_str);
+    }
+    output[output_size++] = find_in_lzw_dictionary(dict, current_str);
+    free(current_str);
+
+    *encoded_len_bytes = (output_size * LZW_CODE_BIT_LEN + 7) / 8;
+    unsigned char* encoded_data = (unsigned char*)calloc(*encoded_len_bytes, 1);
+    int bit_pos = 0;
+    for (int i = 0; i < output_size; i++) {
+        unsigned int code = output[i];
+        for (int j = LZW_CODE_BIT_LEN - 1; j >= 0; j--) {
+            if ((code >> j) & 1) {
+                encoded_data[bit_pos / 8] |= (1 << (7 - (bit_pos % 8)));
+            }
+            bit_pos++;
+        }
+    }
+
+    free(output);
+    free_lzw_dictionary(dict);
+
+    return encoded_data;
+}
+
+unsigned char* lzw_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, size_t* decoded_len) {
+    LZWDictionary* dict = create_lzw_dictionary();
+    size_t num_codes = (encoded_len_bytes * 8) / LZW_CODE_BIT_LEN;
+    unsigned int* codes = (unsigned int*)malloc(sizeof(unsigned int) * num_codes);
+    int bit_pos = 0;
+    for (size_t i = 0; i < num_codes; i++) {
+        codes[i] = 0;
+        for (int j = LZW_CODE_BIT_LEN - 1; j >= 0; j--) {
+            if ((encoded_data[bit_pos / 8] >> (7 - (bit_pos % 8))) & 1) {
+                codes[i] |= (1 << j);
+            }
+            bit_pos++;
+        }
+    }
+
+    size_t decoded_capacity = num_codes * 2;
+    char* decoded_data = (char*)calloc(decoded_capacity, 1);
+    *decoded_len = 0;
+    int old_code = codes[0];
+    char* string = dict->entries[old_code].string;
+    
+    size_t string_len = strlen(string);
+    memcpy(decoded_data, string, string_len);
+    *decoded_len += string_len;
+    
+    char c = string[0];
+
+    for (size_t i = 1; i < num_codes; i++) {
+        int new_code = codes[i];
+        char* new_entry_str;
+        if (new_code >= dict->size) {
+            string = dict->entries[old_code].string;
+            new_entry_str = (char*)malloc(strlen(string) + 2);
+            strcpy(new_entry_str, string);
+            new_entry_str[strlen(string)] = c;
+            new_entry_str[strlen(string) + 1] = '\0';
+        } else {
+            new_entry_str = strdup(dict->entries[new_code].string);
+        }
+        
+        string_len = strlen(new_entry_str);
+        if (*decoded_len + string_len >= decoded_capacity) {
+            decoded_capacity = decoded_capacity * 2 + string_len;
+            decoded_data = (char*)realloc(decoded_data, decoded_capacity);
+        }
+        memcpy(decoded_data + *decoded_len, new_entry_str, string_len);
+        *decoded_len += string_len;
+        
+        c = new_entry_str[0];
+
+        char* str_to_add = (char*)malloc(strlen(dict->entries[old_code].string) + 2);
+        strcpy(str_to_add, dict->entries[old_code].string);
+        str_to_add[strlen(dict->entries[old_code].string)] = c;
+        str_to_add[strlen(dict->entries[old_code].string) + 1] = '\0';
+        add_to_lzw_dictionary(dict, str_to_add);
+        old_code = new_code;
+        free(new_entry_str);
+    }
+
+    free(codes);
+    free_lzw_dictionary(dict);
+
+    return (unsigned char*)decoded_data;
 }
