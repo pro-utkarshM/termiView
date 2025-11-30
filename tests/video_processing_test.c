@@ -8,6 +8,7 @@
 
 char *test_video_io();
 char *test_motion_estimation();
+char *test_optical_flow();
 
 char *test_video_io() {
     // Assuming a test video file exists in the assets directory
@@ -107,9 +108,65 @@ char *test_motion_estimation() {
     return 0;
 }
 
+char *test_optical_flow() {
+    int width = 32;
+    int height = 32;
+    int window_size = 5;
+    double shift_x = 2.0; // Sub-pixel shift to test accuracy
+    double shift_y = 1.0;
+
+    grayscale_image_t frame1 = { .width = width, .height = height };
+    frame1.data = (unsigned char*)malloc(width * height);
+    mu_assert("Frame1 allocation failed", frame1.data != NULL);
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            frame1.data[y * width + x] = (unsigned char)(x + y);
+        }
+    }
+
+    grayscale_image_t frame2 = { .width = width, .height = height };
+    frame2.data = (unsigned char*)malloc(width * height);
+    mu_assert("Frame2 allocation failed", frame2.data != NULL);
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            // Apply a simple shift
+            int orig_x = (int)(x - shift_x);
+            int orig_y = (int)(y - shift_y);
+            if (orig_x >= 0 && orig_x < width && orig_y >= 0 && orig_y < height) {
+                frame2.data[y * width + x] = frame1.data[orig_y * width + orig_x];
+            } else {
+                frame2.data[y * width + x] = 0; // Fill with black
+            }
+        }
+    }
+
+    OpticalFlowField* flow_field = compute_optical_flow(&frame1, &frame2, window_size);
+    mu_assert("OpticalFlowField should not be NULL", flow_field != NULL);
+    mu_assert("Flow field width should match", flow_field->width == width);
+    mu_assert("Flow field height should match", flow_field->height == height);
+
+    // Verify flow vectors in a central region (away from boundaries)
+    int test_region_x = width / 2;
+    int test_region_y = height / 2;
+    size_t idx = test_region_y * width + test_region_x;
+
+    printf("Optical Flow (center pixel): vx=%.2f, vy=%.2f\n", flow_field->flow_vectors[idx].vx, flow_field->flow_vectors[idx].vy);
+
+    // Allow for some error due to approximation and integer pixel shifts
+    mu_assert("Center vx should be close to shift_x", fabs(flow_field->flow_vectors[idx].vx - shift_x) < 2.0);
+    mu_assert("Center vy should be close to shift_y", fabs(flow_field->flow_vectors[idx].vy - shift_y) < 2.0);
+
+    free(frame1.data);
+    free(frame2.data);
+    free_optical_flow_field(flow_field);
+
+    return 0;
+}
+
 char *all_tests() {
     mu_run_test(test_video_io);
     mu_run_test(test_motion_estimation);
+    mu_run_test(test_optical_flow);
     return 0;
 }
 

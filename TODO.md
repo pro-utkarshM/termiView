@@ -43,7 +43,7 @@
 * [x] Video sampling demonstrations
 
 **Unit 5 - Motion & Video Coding:**
-* [ ] Optical flow computation
+* [x] Optical flow computation
 * [ ] Block matching algorithms
 * [ ] Motion estimation techniques
 * [ ] Video compression (predictive coding)

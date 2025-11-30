@@ -446,10 +446,106 @@ grayscale_image_t* compensate_motion(const grayscale_image_t* reference_frame, c
     return compensated_frame;
 }
 
+// Function to compute optical flow between two grayscale frames (Lucas-Kanade)
+OpticalFlowField* compute_optical_flow(const grayscale_image_t* frame1, const grayscale_image_t* frame2, int window_size) {
+    if (frame1 == NULL || frame2 == NULL || frame1->width != frame2->width || frame1->height != frame2->height || window_size <= 0) {
+        fprintf(stderr, "Error: Invalid input to compute_optical_flow\n");
+        return NULL;
+    }
+
+    int width = frame1->width;
+    int height = frame1->height;
+    int half_window = window_size / 2;
+
+    OpticalFlowField* flow_field = (OpticalFlowField*)malloc(sizeof(OpticalFlowField));
+    if (flow_field == NULL) {
+        fprintf(stderr, "Error: Failed to allocate OpticalFlowField\n");
+        return NULL;
+    }
+    flow_field->width = width;
+    flow_field->height = height;
+    flow_field->flow_vectors = (OpticalFlowVector*)calloc(width * height, sizeof(OpticalFlowVector));
+    if (flow_field->flow_vectors == NULL) {
+        fprintf(stderr, "Error: Failed to allocate flow_vectors\n");
+        free(flow_field);
+        return NULL;
+    }
+
+    // Allocate memory for gradients
+    double* Ix = (double*)calloc(width * height, sizeof(double));
+    double* Iy = (double*)calloc(width * height, sizeof(double));
+    double* It = (double*)calloc(width * height, sizeof(double));
+    if (Ix == NULL || Iy == NULL || It == NULL) {
+        fprintf(stderr, "Error: Failed to allocate gradient arrays\n");
+        free(Ix); free(Iy); free(It);
+        free(flow_field->flow_vectors); free(flow_field);
+        return NULL;
+    }
+
+    // Calculate gradients Ix, Iy, It
+    for (int y = 1; y < height - 1; y++) {
+        for (int x = 1; x < width - 1; x++) {
+            size_t idx = y * width + x;
+            // Ix (Sobel filter in X direction)
+            Ix[idx] = (double)(frame1->data[idx + 1] - frame1->data[idx - 1]) / 2.0;
+            // Iy (Sobel filter in Y direction)
+            Iy[idx] = (double)(frame1->data[idx + width] - frame1->data[idx - width]) / 2.0;
+            // It (Temporal gradient)
+            It[idx] = (double)(frame2->data[idx] - frame1->data[idx]);
+        }
+    }
+
+    // Compute flow vectors for each pixel
+    for (int y = half_window; y < height - half_window; y++) {
+        for (int x = half_window; x < width - half_window; x++) {
+            double sum_Ix2 = 0, sum_Iy2 = 0, sum_IxIy = 0, sum_IxIt = 0, sum_IyIt = 0;
+
+            // Sum gradients over the window
+            for (int wy = -half_window; wy <= half_window; wy++) {
+                for (int wx = -half_window; wx <= half_window; wx++) {
+                    size_t idx = (y + wy) * width + (x + wx);
+                    sum_Ix2 += Ix[idx] * Ix[idx];
+                    sum_Iy2 += Iy[idx] * Iy[idx];
+                    sum_IxIy += Ix[idx] * Iy[idx];
+                    sum_IxIt += Ix[idx] * It[idx];
+                    sum_IyIt += Iy[idx] * It[idx];
+                }
+            }
+
+            // Construct and solve the 2x2 system:
+            // [ Gxx Gxy ] [ vx ] = [ -bxx ]
+            // [ Gyx Gyy ] [ vy ] = [ -byy ]
+            // Where Gxx = sum_Ix2, Gxy = sum_IxIy, Gyy = sum_Iy2
+            // bxx = sum_IxIt, byy = sum_IyIt
+
+            double det = sum_Ix2 * sum_Iy2 - sum_IxIy * sum_IxIy;
+
+            if (fabs(det) < 1e-6) { // Avoid division by zero for ill-conditioned matrices
+                flow_field->flow_vectors[y * width + x].vx = 0.0;
+                flow_field->flow_vectors[y * width + x].vy = 0.0;
+            } else {
+                flow_field->flow_vectors[y * width + x].vx = (-sum_Ix2 * sum_IyIt + sum_IxIy * sum_IxIt) / det;
+                flow_field->flow_vectors[y * width + x].vy = (sum_IxIy * sum_IyIt - sum_Iy2 * sum_IxIt) / det;
+            }
+        }
+    }
+
+    free(Ix); free(Iy); free(It);
+    return flow_field;
+}
+
 // Function to free MotionVectorField
 void free_motion_vector_field(MotionVectorField* mv_field) {
     if (mv_field) {
         free(mv_field->vectors);
         free(mv_field);
+    }
+}
+
+// Function to free OpticalFlowField
+void free_optical_flow_field(OpticalFlowField* flow_field) {
+    if (flow_field) {
+        free(flow_field->flow_vectors);
+        free(flow_field);
     }
 }

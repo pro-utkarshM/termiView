@@ -434,6 +434,33 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
                 break;
+            case 11:
+                temporal_filter_size = atoi(optarg);
+                if (temporal_filter_size < 2) {
+                    fprintf(stderr, "Error: Temporal filter size must be at least 2\n");
+                    return 1;
+                }
+                break;
+            case 12: // --motion-estimate
+                motion_estimate_mode = true;
+                break;
+            case 13: // --motion-compensate
+                motion_compensate_mode = true;
+                break;
+            case 14: // --block-size
+                block_size = atoi(optarg);
+                if (block_size <= 0) {
+                    fprintf(stderr, "Error: Block size must be greater than 0\n");
+                    return 1;
+                }
+                break;
+            case 15: // --search-window
+                search_window = atoi(optarg);
+                if (search_window < 0) {
+                    fprintf(stderr, "Error: Search window must be non-negative\n");
+                    return 1;
+                }
+                break;
             case 'h':
                 max_height = (size_t) atoi(optarg);
                 if (max_height == 0) {

@@ -60,4 +60,23 @@ grayscale_image_t* compensate_motion(const grayscale_image_t* reference_frame, c
 // Function to free MotionVectorField
 void free_motion_vector_field(MotionVectorField* mv_field);
 
+// Structure to represent optical flow for each pixel (vx, vy)
+typedef struct {
+    double vx;
+    double vy;
+} OpticalFlowVector;
+
+// Structure to represent an entire optical flow field
+typedef struct {
+    OpticalFlowVector* flow_vectors;
+    int width;
+    int height;
+} OpticalFlowField;
+
+// Function to compute optical flow between two grayscale frames
+OpticalFlowField* compute_optical_flow(const grayscale_image_t* frame1, const grayscale_image_t* frame2, int window_size);
+
+// Function to free OpticalFlowField
+void free_optical_flow_field(OpticalFlowField* flow_field);
+
 #endif // VIDEO_PROCESSING_H
