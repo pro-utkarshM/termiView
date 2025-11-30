@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Forward declarations
+char *test_huffman_compression_decompression();
+char *test_arithmetic_compression_decompression();
+
 char *test_huffman_compression_decompression() {
     // Sample data
     unsigned char original_data[] = "this is an example for huffman encoding";
@@ -46,6 +50,33 @@ char *test_huffman_compression_decompression() {
 
 char *all_tests() {
     mu_run_test(test_huffman_compression_decompression);
+    mu_run_test(test_arithmetic_compression_decompression);
+    return 0;
+}
+
+char *test_arithmetic_compression_decompression() {
+    unsigned char original_data[] = "ABAABCAABCACBA";
+    size_t original_len = strlen((char*)original_data);
+
+    unsigned int frequencies[256] = {0};
+    calculate_frequencies(original_data, original_len, frequencies);
+
+    // Encode
+    size_t encoded_len_bytes;
+    unsigned char* encoded_data = arithmetic_encode(original_data, original_len, frequencies, &encoded_len_bytes);
+    mu_assert("Arithmetic encoded data should not be NULL", encoded_data != NULL);
+    mu_assert("Arithmetic encoded length should be greater than 0", encoded_len_bytes > 0);
+
+    // Decode
+    size_t decoded_len;
+    unsigned char* decoded_data = arithmetic_decode(encoded_data, encoded_len_bytes, frequencies, original_len, &decoded_len);
+    mu_assert("Arithmetic decoded data should not be NULL", decoded_data != NULL);
+    mu_assert("Arithmetic decoded length should match original length", decoded_len == original_len);
+    mu_assert("Arithmetic decoded data should match original data", memcmp(original_data, decoded_data, original_len) == 0);
+
+    free(encoded_data);
+    free(decoded_data);
+
     return 0;
 }
 

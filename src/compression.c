@@ -139,10 +139,6 @@ HuffmanNode* build_huffman_tree(const unsigned int* frequencies) {
             insert_min_heap(pq, create_huffman_node((unsigned char)i, frequencies[i]));
         }
     }
-    // No need to call build_min_heap here, as insert_min_heap maintains the heap property.
-    // However, if we added all nodes and then built the heap, it would be:
-    // build_min_heap(pq); // Build heap from initial nodes
-    // But since insert_min_heap is used in a loop, it implicitly builds the heap.
 
     // Iterate while size of heap doesn't become 1
     while (pq->size > 1) {
@@ -343,4 +339,204 @@ void free_huffman_codes(huffman_codes_t* codes) {
 // Function to free Huffman tree
 void free_huffman_tree(HuffmanNode* node) {
     free_huffman_tree_nodes(node);
+}
+
+// Helper function to build cumulative frequencies
+static void build_cumulative_frequencies(const unsigned int* frequencies, unsigned int* cumulative_frequencies, size_t num_symbols) {
+    cumulative_frequencies[0] = 0;
+    for (size_t i = 0; i < num_symbols; i++) {
+        cumulative_frequencies[i + 1] = cumulative_frequencies[i] + frequencies[i];
+    }
+}
+
+// Helper function to emit a bit for arithmetic encoding/decoding
+static void emit_bit_helper(unsigned char** encoded_buffer, size_t* encoded_buffer_idx, size_t* buffer_capacity, int bit) {
+    // Check if enough space is allocated for the current byte
+    if ((*encoded_buffer_idx / 8) >= *buffer_capacity) {
+        *buffer_capacity *= 2;
+        // Reallocate with a larger size
+        unsigned char* new_buffer = (unsigned char*)realloc(*encoded_buffer, *buffer_capacity * sizeof(unsigned char));
+        if (new_buffer == NULL) {
+            fprintf(stderr, "Error: Failed to reallocate memory for encoded buffer\n");
+            exit(EXIT_FAILURE);
+        }
+        *encoded_buffer = new_buffer;
+        // Initialize new memory to 0 to avoid garbage bits
+        memset(*encoded_buffer + (*buffer_capacity / 2), 0, *buffer_capacity / 2);
+    }
+    
+    if (bit == 1) {
+        (*encoded_buffer)[*encoded_buffer_idx / 8] |= (1 << (7 - (*encoded_buffer_idx % 8)));
+    } else {
+        // Ensure the bit is 0 (it should already be if using calloc and not setting it)
+        (*encoded_buffer)[*encoded_buffer_idx / 8] &= ~(1 << (7 - (*encoded_buffer_idx % 8)));
+    }
+    (*encoded_buffer_idx)++;
+}
+
+// Function to encode data using Arithmetic coding
+unsigned char* arithmetic_encode(const unsigned char* data, size_t data_len, 
+                                 const unsigned int* frequencies, size_t* encoded_len_bytes) {
+    if (data == NULL || frequencies == NULL || encoded_len_bytes == NULL) {
+        return NULL;
+    }
+
+    size_t num_symbols = 256; // Assuming 8-bit symbols
+    unsigned int cumulative_frequencies[num_symbols + 1];
+    build_cumulative_frequencies(frequencies, cumulative_frequencies, num_symbols);
+
+    unsigned int total_freq = cumulative_frequencies[num_symbols];
+    if (total_freq == 0) {
+        *encoded_len_bytes = 0;
+        return NULL;
+    }
+
+    // Initialize range and other variables
+    unsigned int low = 0;
+    unsigned int high = 0xFFFFFFFF;
+    int bits_to_follow = 0;
+
+    // Output buffer
+    size_t buffer_capacity = 16;
+    unsigned char* encoded_buffer = (unsigned char*)calloc(buffer_capacity, sizeof(unsigned char));
+    if (encoded_buffer == NULL) return NULL;
+    size_t encoded_buffer_idx = 0;
+
+    // Main encoding loop
+    for (size_t i = 0; i < data_len; i++) {
+        unsigned char symbol = data[i];
+        unsigned long long range = (unsigned long long)high - low + 1;
+
+        // Update range
+        high = low + (unsigned int)((range * cumulative_frequencies[symbol + 1]) / total_freq) - 1;
+        low = low + (unsigned int)((range * cumulative_frequencies[symbol]) / total_freq);
+
+        // Renormalization
+        for (;;) {
+            if (high < 0x80000000U) { // If high is in the lower half
+                emit_bit_helper(&encoded_buffer, &encoded_buffer_idx, &buffer_capacity, 0);
+                while (bits_to_follow > 0) {
+                    emit_bit_helper(&encoded_buffer, &encoded_buffer_idx, &buffer_capacity, 1);
+                    bits_to_follow--;
+                }
+            } else if (low >= 0x80000000U) { // If low is in the upper half
+                emit_bit_helper(&encoded_buffer, &encoded_buffer_idx, &buffer_capacity, 1);
+                while (bits_to_follow > 0) {
+                    emit_bit_helper(&encoded_buffer, &encoded_buffer_idx, &buffer_capacity, 0);
+                    bits_to_follow--;
+                }
+                low -= 0x80000000U;
+                high -= 0x80000000U;
+            } else if (low >= 0x40000000U && high < 0xC0000000U) { // Underflow
+                bits_to_follow++;
+                low -= 0x40000000U;
+                high -= 0x40000000U;
+            } else {
+                break;
+            }
+            low <<= 1;
+            high = (high << 1) | 1;
+        }
+    }
+
+    // Flush remaining bits
+    bits_to_follow++;
+    if (low < 0x40000000U) {
+        emit_bit_helper(&encoded_buffer, &encoded_buffer_idx, &buffer_capacity, 0);
+        for (int i = 0; i < bits_to_follow; i++) emit_bit_helper(&encoded_buffer, &encoded_buffer_idx, &buffer_capacity, 1);
+    } else {
+        emit_bit_helper(&encoded_buffer, &encoded_buffer_idx, &buffer_capacity, 1);
+        for (int i = 0; i < bits_to_follow; i++) emit_bit_helper(&encoded_buffer, &encoded_buffer_idx, &buffer_capacity, 0);
+    }
+    
+    *encoded_len_bytes = (encoded_buffer_idx + 7) / 8;
+    // Shrink to fit
+    encoded_buffer = (unsigned char*)realloc(encoded_buffer, *encoded_len_bytes);
+
+    return encoded_buffer;
+}
+
+unsigned char* arithmetic_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, 
+                                 const unsigned int* frequencies, size_t data_len, size_t* decoded_len) {
+    if (encoded_data == NULL || frequencies == NULL || decoded_len == NULL || data_len == 0) {
+        return NULL;
+    }
+
+    size_t num_symbols = 256;
+    unsigned int cumulative_frequencies[num_symbols + 1];
+    build_cumulative_frequencies(frequencies, cumulative_frequencies, num_symbols);
+    unsigned int total_freq = cumulative_frequencies[num_symbols];
+
+    if (total_freq == 0) {
+        *decoded_len = 0;
+        return NULL;
+    }
+
+    // Allocate memory for decoded data
+    unsigned char* decoded_data = (unsigned char*)malloc(data_len * sizeof(unsigned char));
+    if (decoded_data == NULL) return NULL;
+    *decoded_len = 0;
+
+    // Initialize range, code value, and other variables
+    unsigned int low = 0;
+    unsigned int high = 0xFFFFFFFF;
+    unsigned int code = 0;
+
+    // Read initial bits to fill the code register
+    size_t bit_idx = 0;
+    for (int i = 0; i < 32; i++) {
+        if (bit_idx < encoded_len_bytes * 8) {
+            code = (code << 1) | ((encoded_data[bit_idx / 8] >> (7 - (bit_idx % 8))) & 1);
+            bit_idx++;
+        } else {
+            code <<= 1;
+        }
+    }
+
+    // Main decoding loop
+    for (size_t i = 0; i < data_len; i++) {
+        unsigned long long range = (unsigned long long)high - low + 1;
+        unsigned int scaled_value = (unsigned int)((((unsigned long long)code - low + 1) * total_freq - 1) / range);
+
+        // Find symbol based on scaled value
+        int symbol = 0;
+        for (; symbol < (int)num_symbols; symbol++) {
+            if (cumulative_frequencies[symbol + 1] > scaled_value) {
+                break;
+            }
+        }
+        decoded_data[i] = (unsigned char)symbol;
+
+        // Update range
+        high = low + (unsigned int)((range * cumulative_frequencies[symbol + 1]) / total_freq) - 1;
+        low = low + (unsigned int)((range * cumulative_frequencies[symbol]) / total_freq);
+
+        // Renormalization
+        for (;;) {
+            if (high < 0x80000000U) {
+                // Do nothing to low and high
+            } else if (low >= 0x80000000U) {
+                code -= 0x80000000U;
+                low -= 0x80000000U;
+                high -= 0x80000000U;
+            } else if (low >= 0x40000000U && high < 0xC0000000U) {
+                code -= 0x40000000U;
+                low -= 0x40000000U;
+                high -= 0x40000000U;
+            } else {
+                break;
+            }
+            low <<= 1;
+            high = (high << 1) | 1;
+
+            if (bit_idx < encoded_len_bytes * 8) {
+                code = (code << 1) | ((encoded_data[bit_idx / 8] >> (7 - (bit_idx % 8))) & 1);
+                bit_idx++;
+            } else {
+                code <<= 1;
+            }
+        }
+    }
+    *decoded_len = data_len;
+    return decoded_data;
 }

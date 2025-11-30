@@ -41,4 +41,27 @@ void free_huffman_codes(huffman_codes_t* codes);
 // Function to free Huffman tree
 void free_huffman_tree(HuffmanNode* node);
 
+// Structures for Arithmetic Coding state
+typedef struct {
+    unsigned int low;
+    unsigned int high;
+    unsigned int range;
+} ArithmeticEncoderState;
+
+typedef struct {
+    unsigned int value;
+    unsigned int low;
+    unsigned int high;
+    unsigned int range;
+} ArithmeticDecoderState;
+
+// Function to encode data using Arithmetic coding
+unsigned char* arithmetic_encode(const unsigned char* data, size_t data_len, 
+                                 const unsigned int* frequencies, size_t* encoded_len_bytes);
+
+// Function to decode data using Arithmetic coding
+unsigned char* arithmetic_decode(const unsigned char* encoded_data, size_t encoded_len_bytes, 
+                                 const unsigned int* frequencies, size_t data_len, size_t* decoded_len);
+
+
 #endif // COMPRESSION_H
