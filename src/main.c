@@ -100,6 +100,10 @@ int main(int argc, char* argv[]) {
     bool decompress_mode = false;
     int wavelet_levels = 1; // Default wavelet decomposition levels
     char* video_input_file = NULL; // New variable for video input
+    int extract_frame_num = -1; // -1 indicates no single frame extraction
+    int start_frame_num = -1; // -1 indicates no range processing
+    int end_frame_num = -1; // -1 indicates no range processing
+    char* output_frame_pattern = NULL; // NULL indicates no saving of individual frames
 
     // Long options
     static struct option long_options[] = {
@@ -126,6 +130,10 @@ int main(int argc, char* argv[]) {
         {"decompress", required_argument, 0, 3},
         {"wavelet-levels", required_argument, 0, 4},
         {"video",   required_argument, 0, 5},
+        {"extract-frame", required_argument, 0, 6},
+        {"start-frame", required_argument, 0, 7},
+        {"end-frame", required_argument, 0, 8},
+        {"output-frame-pattern", required_argument, 0, 9},
         {0, 0, 0, 0}
     };
 
@@ -196,6 +204,30 @@ int main(int argc, char* argv[]) {
                 break;
             case 5:
                 video_input_file = optarg;
+                break;
+            case 6:
+                extract_frame_num = atoi(optarg);
+                if (extract_frame_num < 0) {
+                    fprintf(stderr, "Error: Frame number must be non-negative\n");
+                    return 1;
+                }
+                break;
+            case 7:
+                start_frame_num = atoi(optarg);
+                if (start_frame_num < 0) {
+                    fprintf(stderr, "Error: Start frame number must be non-negative\n");
+                    return 1;
+                }
+                break;
+            case 8:
+                end_frame_num = atoi(optarg);
+                if (end_frame_num < -1) { // -1 means until end
+                    fprintf(stderr, "Error: End frame number must be non-negative or -1\n");
+                    return 1;
+                }
+                break;
+            case 9:
+                output_frame_pattern = optarg;
                 break;
             case 'h':
                 max_height = (size_t) atoi(optarg);
@@ -440,22 +472,113 @@ int main(int argc, char* argv[]) {
         }
 
         rgb_image_t rgb_frame;
+        int frame_count = 0;
+        
         while (read_video_frame(vid_ctx, &rgb_frame)) {
+            if (extract_frame_num != -1 && frame_count != extract_frame_num) {
+                free_rgb_image(&rgb_frame);
+                frame_count++;
+                continue;
+            }
+            if (start_frame_num != -1 && frame_count < start_frame_num) {
+                free_rgb_image(&rgb_frame);
+                frame_count++;
+                continue;
+            }
+            if (end_frame_num != -1 && frame_count > end_frame_num) {
+                free_rgb_image(&rgb_frame);
+                break; // End of range
+            }
+
             grayscale_image_t gray_frame = rgb_to_grayscale(&rgb_frame);
             free_rgb_image(&rgb_frame);
 
-            grayscale_image_t resized_frame = make_resized_grayscale(&gray_frame, max_width, max_height, interpolation_method);
-            free_grayscale_image(&gray_frame);
+            // Apply filter if specified
+            grayscale_image_t filtered = {0};
+            grayscale_image_t* to_resize = &gray_frame;
+            
+            if (filter_type != FILTER_NONE) {
+                kernel_t kernel = {0};
+                switch (filter_type) {
+                    case FILTER_BLUR:
+                        kernel = create_gaussian_blur_kernel(5, 1.0f);
+                        break;
+                    case FILTER_SHARPEN:
+                        kernel = create_sharpen_kernel();
+                        break;
+                    case FILTER_EDGE_SOBEL:
+                        filtered = apply_sobel_edge_detection(&gray_frame);
+                        to_resize = &filtered;
+                        break;
+                    case FILTER_EDGE_PREWITT:
+                        filtered = apply_prewitt_edge_detection(&gray_frame);
+                        to_resize = &filtered;
+                        break;
+                    case FILTER_EDGE_ROBERTS:
+                        filtered = apply_roberts_edge_detection(&gray_frame);
+                        to_resize = &filtered;
+                        break;
+                    case FILTER_EDGE_LAPLACIAN:
+                        kernel = create_laplacian_kernel();
+                        break;
+                    case FILTER_SALT_PEPPER:
+                        filtered = apply_salt_pepper_noise(&gray_frame, noise_density);
+                        to_resize = &filtered;
+                        break;
+                    case FILTER_IDEAL_LOWPASS:
+                    case FILTER_IDEAL_HIGHPASS:
+                    case FILTER_GAUSSIAN_LOWPASS:
+                    case FILTER_GAUSSIAN_HIGHPASS:
+                        filtered = apply_frequency_filter(&gray_frame, filter_type, cutoff);
+                        to_resize = &filtered;
+                        break;
+                    default:
+                        break;
+                }
+                
+                if (kernel.data != NULL) {
+                    filtered = apply_convolution_grayscale(&gray_frame, &kernel);
+                    free_kernel(&kernel);
+                    if (filtered.data != NULL) {
+                        to_resize = &filtered;
+                    }
+                } else if ((filter_type == FILTER_EDGE_SOBEL || filter_type == FILTER_SALT_PEPPER) && filtered.data == NULL) {
+                    // Sobel or Salt-Pepper failed, so we should not proceed
+                    to_resize = NULL;
+                }
+            }
 
-            // Print image
-            if (color_mode == COLOR_MODE_NONE) {
-                print_image(&resized_frame, dark_mode);
+            if (to_resize == NULL) {
+                free_grayscale_image(&gray_frame);
+                close_video(vid_ctx);
+                return 1;
+            }
+
+            grayscale_image_t resized_frame = make_resized_grayscale(to_resize, max_width, max_height, interpolation_method);
+            if (filtered.data != NULL) free_grayscale_image(&filtered);
+            free_grayscale_image(&gray_frame); // Free original gray_frame after processing
+
+            // Output processed frame to file if pattern is provided
+            if (output_file != NULL && output_frame_pattern != NULL) {
+                char filename[256];
+                snprintf(filename, sizeof(filename), output_frame_pattern, frame_count);
+                if (!save_grayscale_image_to_png(&resized_frame, filename)) {
+                    fprintf(stderr, "Error: Failed to save frame %d to %s\n", frame_count, filename);
+                    free_grayscale_image(&resized_frame);
+                    close_video(vid_ctx);
+                    return 1;
+                }
+                fprintf(stderr, "Saved frame %d to %s\n", frame_count, filename);
             } else {
-                // If a color image is desired, we should re-read the original rgb_frame or handle color conversion from rgb_frame
-                // For simplicity, converting grayscale to color output here.
-                print_grayscale_colored(&resized_frame, dark_mode, color_mode, quantization_levels);
+                // Print image to stdout
+                if (color_mode == COLOR_MODE_NONE) {
+                    print_image(&resized_frame, dark_mode);
+                } else {
+                    print_grayscale_colored(&resized_frame, dark_mode, color_mode, quantization_levels);
+                }
             }
             free_grayscale_image(&resized_frame);
+            frame_count++;
             // Optionally add a delay here for video playback speed control
             // usleep(1000000 / vid_ctx->fps); // Requires #include <unistd.h> and vid_ctx->fps to be populated
         }

@@ -33,6 +33,11 @@ Options:
   --compress <type>      Compress input file using specified algorithm: lzw, huffman, arithmetic, rle, dct_based, wavelet
   --decompress <type>    Decompress input file using specified algorithm: lzw, huffman, arithmetic, rle, dct_based, wavelet
   --wavelet-levels <num> Number of decomposition levels for wavelet transform (default: 1)
+  --video <file>         Input video file to process frames from
+  --extract-frame <num>  Extract and process a single frame by its number (0-indexed)
+  --start-frame <num>    Start processing frames from this number (0-indexed)
+  --end-frame <num>      End processing frames at this number (inclusive, -1 for end)
+  --output-frame-pattern <pattern> Save processed frames to files using a pattern (e.g., "frame_%%04d.png")
 ```
 
 ### Examples
@@ -130,6 +135,21 @@ termiView --compress wavelet --wavelet-levels 2 input.png -o output.wlt
 **Decompress an image using Wavelet compression:**
 ```bash
 termiView --decompress wavelet --wavelet-levels 2 input.wlt -o output.png
+```
+
+**Process a video file, displaying frames as ASCII:**
+```bash
+termiView --video input.mp4
+```
+
+**Extract and save a specific frame as a PNG:**
+```bash
+termiView --video input.mp4 --extract-frame 10 --output-frame-pattern "frame_%%04d.png"
+```
+
+**Process a range of frames and apply a filter:**
+```bash
+termiView --video input.mp4 --start-frame 5 --end-frame 20 --filter blur --output-frame-pattern "blur_frame_%%04d.png"
 ```
 
 **Compute the 2D DCT of an image:**

@@ -749,3 +749,20 @@ grayscale_image_t apply_adaptive_thresholding(const grayscale_image_t* image, in
 
     return result;
 }
+
+bool save_grayscale_image_to_png(const grayscale_image_t* image, const char* filename) {
+    if (image == NULL || image->data == NULL || filename == NULL) {
+        fprintf(stderr, "Error: Invalid input to save_grayscale_image_to_png\n");
+        return false;
+    }
+
+    // stbi_write_png parameters: filename, width, height, components (1 for grayscale), data, stride_in_bytes
+    int success = stbi_write_png(filename, (int)image->width, (int)image->height, 1, image->data, (int)image->width);
+    
+    if (success == 0) {
+        fprintf(stderr, "Error: Failed to write PNG image to '%s'\n", filename);
+        return false;
+    }
+    return true;
+}
+
