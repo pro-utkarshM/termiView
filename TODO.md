@@ -36,7 +36,7 @@
 * [x] Wavelet-based compression
 
 **Unit 4 - Video Processing:**
-* [ ] Video file I/O
+* [x] Video file I/O
 * [ ] Frame extraction and processing
 * [ ] Temporal filtering
 * [ ] Motion models

@@ -3,12 +3,12 @@ CFLAGS = -Wall -Wextra -Wno-unused-parameter -std=c99 -Iinclude
 CFLAGS_DEBUG = $(CFLAGS) -g -DDEBUG
 CFLAGS_RELEASE = $(CFLAGS) -O2
 FFTW_LIBS = $(shell pkg-config --libs fftw3)
-LDFLAGS = -lm $(FFTW_LIBS)
+LDFLAGS = -lm $(FFTW_LIBS) -lavformat -lavcodec -lswscale -lavutil
 
 SRCDIR = src
 INCDIR = include
 SOURCES = $(wildcard $(SRCDIR)/*.c)
-OBJECTS = $(SOURCES:.c=.o)
+OBJECTS = $(SOURCES:.c=.o) src/video_processing.o
 TARGET = termiView
 TARGET_DEBUG = termiView-debug
 
@@ -58,7 +58,7 @@ distclean: clean
 	rm -f *.txt
 
 # Run tests
-test: test_image_processing test_frequency test_filters test_compression
+test: test_image_processing test_frequency test_filters test_compression test_video_processing
 	@echo "Running basic integration tests..."
 	@./$(TARGET) --version
 	@./$(TARGET) --help > /dev/null
@@ -81,4 +81,8 @@ test_compression: src/compression.o src/image_processing.o
 	$(CC) $(CFLAGS) -Itests tests/compression_test.c src/compression.o src/image_processing.o -o tests/compression_test $(LDFLAGS)
 	@./tests/compression_test
 
-.PHONY: all debug install uninstall clean distclean test test_image_processing test_frequency test_filters test_compression
+test_video_processing: src/video_processing.o src/image_processing.o
+	$(CC) $(CFLAGS) -Itests tests/video_processing_test.c src/video_processing.o src/image_processing.o -o tests/video_processing_test $(LDFLAGS)
+	@./tests/video_processing_test
+
+.PHONY: all debug install uninstall clean distclean test test_image_processing test_frequency test_filters test_compression test_video_processing

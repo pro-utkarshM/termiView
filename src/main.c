@@ -8,6 +8,7 @@
 #include "../include/filters.h"
 #include "../include/frequency.h"
 #include "../include/compression.h"
+#include "../include/video_processing.h" // Include for video processing functions
 
 typedef enum {
     COMPRESSION_NONE,
@@ -98,6 +99,7 @@ int main(int argc, char* argv[]) {
     compression_type_t compression_type = COMPRESSION_NONE;
     bool decompress_mode = false;
     int wavelet_levels = 1; // Default wavelet decomposition levels
+    char* video_input_file = NULL; // New variable for video input
 
     // Long options
     static struct option long_options[] = {
@@ -123,6 +125,7 @@ int main(int argc, char* argv[]) {
         {"compress", required_argument, 0, 2},
         {"decompress", required_argument, 0, 3},
         {"wavelet-levels", required_argument, 0, 4},
+        {"video",   required_argument, 0, 5},
         {0, 0, 0, 0}
     };
 
@@ -191,12 +194,8 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
                 break;
-            case 'w':
-                max_width = (size_t) atoi(optarg);
-                if (max_width == 0) {
-                    fprintf(stderr, "Error: Invalid width value\\n");
-                    return 1;
-                }
+            case 5:
+                video_input_file = optarg;
                 break;
             case 'h':
                 max_height = (size_t) atoi(optarg);
@@ -431,6 +430,37 @@ int main(int argc, char* argv[]) {
         }
 
         free(input_data);
+        return 0;
+    }
+
+    if (video_input_file != NULL) {
+        VideoContext* vid_ctx = open_video(video_input_file);
+        if (vid_ctx == NULL) {
+            return 1;
+        }
+
+        rgb_image_t rgb_frame;
+        while (read_video_frame(vid_ctx, &rgb_frame)) {
+            grayscale_image_t gray_frame = rgb_to_grayscale(&rgb_frame);
+            free_rgb_image(&rgb_frame);
+
+            grayscale_image_t resized_frame = make_resized_grayscale(&gray_frame, max_width, max_height, interpolation_method);
+            free_grayscale_image(&gray_frame);
+
+            // Print image
+            if (color_mode == COLOR_MODE_NONE) {
+                print_image(&resized_frame, dark_mode);
+            } else {
+                // If a color image is desired, we should re-read the original rgb_frame or handle color conversion from rgb_frame
+                // For simplicity, converting grayscale to color output here.
+                print_grayscale_colored(&resized_frame, dark_mode, color_mode, quantization_levels);
+            }
+            free_grayscale_image(&resized_frame);
+            // Optionally add a delay here for video playback speed control
+            // usleep(1000000 / vid_ctx->fps); // Requires #include <unistd.h> and vid_ctx->fps to be populated
+        }
+
+        close_video(vid_ctx);
         return 0;
     }
 
