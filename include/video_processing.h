@@ -34,4 +34,7 @@ bool read_video_frame(VideoContext* vid_ctx, rgb_image_t* out_rgb_frame);
 // Function to close video context and free resources
 void close_video(VideoContext* vid_ctx);
 
+// Function to apply temporal averaging on a buffer of frames
+grayscale_image_t temporal_average(grayscale_image_t** frames, int num_frames);
+
 #endif // VIDEO_PROCESSING_H

@@ -38,6 +38,8 @@ Options:
   --start-frame <num>    Start processing frames from this number (0-indexed)
   --end-frame <num>      End processing frames at this number (inclusive, -1 for end)
   --output-frame-pattern <pattern> Save processed frames to files using a pattern (e.g., "frame_%%04d.png")
+  --temporal-filter <type>   Apply a temporal filter to video frames (e.g., "average")
+  --temporal-filter-size <num> Number of frames for the temporal filter (default: 3)
 ```
 
 ### Examples
@@ -150,6 +152,11 @@ termiView --video input.mp4 --extract-frame 10 --output-frame-pattern "frame_%%0
 **Process a range of frames and apply a filter:**
 ```bash
 termiView --video input.mp4 --start-frame 5 --end-frame 20 --filter blur --output-frame-pattern "blur_frame_%%04d.png"
+```
+
+**Apply temporal averaging to a video:**
+```bash
+termiView --video input.mp4 --temporal-filter average --temporal-filter-size 5
 ```
 
 **Compute the 2D DCT of an image:**

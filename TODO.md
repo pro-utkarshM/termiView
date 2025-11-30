@@ -38,7 +38,7 @@
 **Unit 4 - Video Processing:**
 * [x] Video file I/O
 * [x] Frame extraction and processing
-* [ ] Temporal filtering
+* [x] Temporal filtering
 * [ ] Motion models
 * [ ] Video sampling demonstrations
 

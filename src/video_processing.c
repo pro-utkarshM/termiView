@@ -224,3 +224,36 @@ void close_video(VideoContext* vid_ctx) {
         free(vid_ctx);
     }
 }
+
+// Function to apply temporal averaging on a buffer of frames
+grayscale_image_t temporal_average(grayscale_image_t** frames, int num_frames) {
+    grayscale_image_t result = {0};
+    if (frames == NULL || num_frames <= 0) {
+        fprintf(stderr, "Error: Invalid input to temporal_average\n");
+        return result;
+    }
+
+    size_t width = frames[0]->width;
+    size_t height = frames[0]->height;
+    size_t num_pixels = width * height;
+
+    result.width = width;
+    result.height = height;
+    result.data = (unsigned char*)calloc(num_pixels, sizeof(unsigned char));
+    if (result.data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for temporal average image\n");
+        result.width = 0;
+        result.height = 0;
+        return result;
+    }
+
+    for (size_t i = 0; i < num_pixels; i++) {
+        double sum = 0;
+        for (int j = 0; j < num_frames; j++) {
+            sum += frames[j]->data[i];
+        }
+        result.data[i] = (unsigned char)round(sum / num_frames);
+    }
+
+    return result;
+}
