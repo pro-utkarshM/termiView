@@ -37,4 +37,27 @@ void close_video(VideoContext* vid_ctx);
 // Function to apply temporal averaging on a buffer of frames
 grayscale_image_t temporal_average(grayscale_image_t** frames, int num_frames);
 
+// Structure to represent a single motion vector
+typedef struct {
+    int block_x;
+    int block_y;
+    int dx;
+    int dy;
+} MotionVector;
+
+// Structure to represent a field of motion vectors for a frame
+typedef struct {
+    MotionVector* vectors;
+    int num_vectors;
+} MotionVectorField;
+
+// Function to estimate motion between two frames
+MotionVectorField* estimate_motion(const grayscale_image_t* current_frame, const grayscale_image_t* reference_frame, int block_size, int search_window);
+
+// Function to compensate motion in a frame using motion vectors
+grayscale_image_t* compensate_motion(const grayscale_image_t* reference_frame, const MotionVectorField* mv_field, int block_size);
+
+// Function to free MotionVectorField
+void free_motion_vector_field(MotionVectorField* mv_field);
+
 #endif // VIDEO_PROCESSING_H

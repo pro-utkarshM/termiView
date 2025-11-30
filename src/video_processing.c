@@ -257,3 +257,199 @@ grayscale_image_t temporal_average(grayscale_image_t** frames, int num_frames) {
 
     return result;
 }
+
+// Helper function to calculate Mean Absolute Difference (MAD) between two blocks
+static double calculate_mad(const unsigned char* block1, int block1_stride,
+                           const unsigned char* block2, int block2_stride,
+                           int block_size) {
+    double mad = 0.0;
+    for (int y = 0; y < block_size; y++) {
+        for (int x = 0; x < block_size; x++) {
+            mad += abs(block1[y * block1_stride + x] - block2[y * block2_stride + x]);
+        }
+    }
+    return mad / (block_size * block_size);
+}
+
+// Function to estimate motion between two frames using Block Matching
+MotionVectorField* estimate_motion(const grayscale_image_t* current_frame, 
+                                   const grayscale_image_t* reference_frame, 
+                                   int block_size, int search_window) {
+    if (current_frame == NULL || reference_frame == NULL ||
+        current_frame->width != reference_frame->width ||
+        current_frame->height != reference_frame->height ||
+        block_size <= 0 || search_window < 0) {
+        fprintf(stderr, "Error: Invalid input to estimate_motion\n");
+        return NULL;
+    }
+
+    int width = current_frame->width;
+    int height = current_frame->height;
+
+    int num_blocks_x = (width + block_size - 1) / block_size;
+    int num_blocks_y = (height + block_size - 1) / block_size;
+    int total_blocks = num_blocks_x * num_blocks_y;
+
+    MotionVectorField* mv_field = (MotionVectorField*)malloc(sizeof(MotionVectorField));
+    if (mv_field == NULL) {
+        fprintf(stderr, "Error: Failed to allocate MotionVectorField\n");
+        return NULL;
+    }
+    mv_field->vectors = (MotionVector*)malloc(sizeof(MotionVector) * total_blocks);
+    if (mv_field->vectors == NULL) {
+        fprintf(stderr, "Error: Failed to allocate MotionVector array\n");
+        free(mv_field);
+        return NULL;
+    }
+    mv_field->num_vectors = total_blocks;
+
+    int vector_idx = 0;
+    for (int by = 0; by < num_blocks_y; by++) {
+        for (int bx = 0; bx < num_blocks_x; bx++) {
+            int current_block_x = bx * block_size;
+            int current_block_y = by * block_size;
+
+            double min_mad = -1.0;
+            int best_dx = 0;
+            int best_dy = 0;
+
+            // Search area in reference frame
+            int search_start_x = current_block_x - search_window;
+            int search_end_x = current_block_x + search_window;
+            int search_start_y = current_block_y - search_window;
+            int search_end_y = current_block_y + search_window;
+
+            // Clamp search area to frame boundaries
+            if (search_start_x < 0) search_start_x = 0;
+            if (search_start_y < 0) search_start_y = 0;
+            if (search_end_x + block_size > width) search_end_x = width - block_size;
+            if (search_end_y + block_size > height) search_end_y = height - block_size;
+
+
+            // Extract current block data
+            unsigned char* current_block_data = (unsigned char*)malloc(block_size * block_size);
+            if (current_block_data == NULL) {
+                // Handle error
+                fprintf(stderr, "Error: Failed to allocate current_block_data\n");
+                free(mv_field->vectors);
+                free(mv_field);
+                return NULL;
+            }
+            for (int y = 0; y < block_size; y++) {
+                if (current_block_y + y < height && current_block_x < width) { // Ensure within bounds
+                    memcpy(current_block_data + y * block_size, 
+                           current_frame->data + (current_block_y + y) * width + current_block_x, 
+                           block_size);
+                } else { // Fill with padding if outside image bounds
+                    memset(current_block_data + y * block_size, 0, block_size);
+                }
+            }
+
+
+            for (int ref_y = search_start_y; ref_y <= search_end_y; ref_y++) {
+                for (int ref_x = search_start_x; ref_x <= search_end_x; ref_x++) {
+                    if (ref_x + block_size > width || ref_y + block_size > height) {
+                        continue; // Skip if candidate block goes out of bounds
+                    }
+
+                    unsigned char* ref_block_data = (unsigned char*)malloc(block_size * block_size);
+                    if (ref_block_data == NULL) {
+                        // Handle error
+                        fprintf(stderr, "Error: Failed to allocate ref_block_data\n");
+                        free(current_block_data);
+                        free(mv_field->vectors);
+                        free(mv_field);
+                        return NULL;
+                    }
+                    for (int y = 0; y < block_size; y++) {
+                        memcpy(ref_block_data + y * block_size, 
+                               reference_frame->data + (ref_y + y) * width + ref_x, 
+                               block_size);
+                    }
+
+                    double mad = calculate_mad(current_block_data, block_size, ref_block_data, block_size, block_size);
+                    
+                    if (min_mad == -1.0 || mad < min_mad) {
+                        min_mad = mad;
+                        best_dx = ref_x - current_block_x;
+                        best_dy = ref_y - current_block_y;
+                    }
+                    free(ref_block_data);
+                }
+            }
+            free(current_block_data);
+
+            mv_field->vectors[vector_idx].block_x = current_block_x;
+            mv_field->vectors[vector_idx].block_y = current_block_y;
+            mv_field->vectors[vector_idx].dx = best_dx;
+            mv_field->vectors[vector_idx].dy = best_dy;
+            vector_idx++;
+        }
+    }
+
+    return mv_field;
+}
+
+// Function to compensate motion in a frame using motion vectors
+grayscale_image_t* compensate_motion(const grayscale_image_t* reference_frame, const MotionVectorField* mv_field, int block_size) {
+    if (reference_frame == NULL || mv_field == NULL || block_size <= 0) {
+        fprintf(stderr, "Error: Invalid input to compensate_motion\n");
+        return NULL;
+    }
+
+    int width = reference_frame->width;
+    int height = reference_frame->height;
+
+    grayscale_image_t* compensated_frame = (grayscale_image_t*)malloc(sizeof(grayscale_image_t));
+    if (compensated_frame == NULL) {
+        fprintf(stderr, "Error: Failed to allocate compensated_frame\n");
+        return NULL;
+    }
+    compensated_frame->width = width;
+    compensated_frame->height = height;
+    compensated_frame->data = (unsigned char*)calloc(width * height, sizeof(unsigned char));
+    if (compensated_frame->data == NULL) {
+        fprintf(stderr, "Error: Failed to allocate compensated_frame data\n");
+        free(compensated_frame);
+        return NULL;
+    }
+
+    for (int i = 0; i < mv_field->num_vectors; i++) {
+        MotionVector mv = mv_field->vectors[i];
+
+        int ref_block_x = mv.block_x + mv.dx;
+        int ref_block_y = mv.block_y + mv.dy;
+
+        // Ensure block is within reference frame boundaries
+        if (ref_block_x < 0) ref_block_x = 0;
+        if (ref_block_y < 0) ref_block_y = 0;
+        if (ref_block_x + block_size > width) ref_block_x = width - block_size;
+        if (ref_block_y + block_size > height) ref_block_y = height - block_size;
+
+        for (int y = 0; y < block_size; y++) {
+            for (int x = 0; x < block_size; x++) {
+                int current_frame_pixel_x = mv.block_x + x;
+                int current_frame_pixel_y = mv.block_y + y;
+                int ref_frame_pixel_x = ref_block_x + x;
+                int ref_frame_pixel_y = ref_block_y + y;
+
+                if (current_frame_pixel_x < width && current_frame_pixel_y < height &&
+                    ref_frame_pixel_x < width && ref_frame_pixel_y < height) {
+                    
+                    compensated_frame->data[current_frame_pixel_y * width + current_frame_pixel_x] =
+                        reference_frame->data[ref_frame_pixel_y * width + ref_frame_pixel_x];
+                }
+            }
+        }
+    }
+
+    return compensated_frame;
+}
+
+// Function to free MotionVectorField
+void free_motion_vector_field(MotionVectorField* mv_field) {
+    if (mv_field) {
+        free(mv_field->vectors);
+        free(mv_field);
+    }
+}
