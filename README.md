@@ -1,121 +1,69 @@
 # TermiView
 
-> A comprehensive command-line toolkit for learning and implementing image and video processing algorithms - from fundamentals to advanced techniques.
+> A command-line toolkit for learning and implementing image and video processing algorithms — from fundamentals to advanced techniques.
+
+---
+
+## Contents
+
+* [Overview](#overview)
+* [What It Does](#what-it-does)
+* [Features](#features)
+* [Installation](#installation)
+* [Development](#development)
+* [Roadmap](#roadmap)
+* [Contributing](#contributing)
+* [Author](#author)
 
 ---
 
 ## Overview
 
-**TermiView** is an educational CLI toolkit built for students, researchers, and developers who want to learn and implement image and video processing algorithms from the ground up.
+**TermiView** is an open-source **command-line toolkit** that transforms your terminal into a complete lab for **image and video processing**.
 
-Starting with **colorized ASCII art rendering**, TermiView is evolving into a **complete implementation** of image and video processing fundamentals, covering everything from basic transforms to advanced compression and motion estimation - all with practical, hands-on code you can study and modify.
+It helps you learn how digital images and videos are processed at the algorithmic level — by letting you build, visualize, and experiment with actual implementations in **C**.
+
+Starting with **colorized ASCII rendering**, TermiView expands into a suite that demonstrates:
+
+* Core image processing fundamentals
+* Frequency-domain transforms (DFT, DCT, DWT)
+* Compression algorithms (Huffman, JPEG, wavelet)
+* Motion estimation and video coding concepts
+
+Every module is implemented transparently, making it ideal for study, experimentation, and learning.
+
+---
+
+## What It Does
+
+* Converts images into ASCII art with configurable color modes (grayscale to truecolor).
+* Applies convolution-based filters such as Gaussian blur, sharpen, and edge detection.
+* Demonstrates foundational topics like sampling, quantization, and transforms.
+* Provides implementations of compression algorithms and motion analysis for video.
+
+In short, TermiView bridges **theory and code**, offering a hands-on way to understand how visual data is processed at every stage.
 
 ---
 
 ## Features
 
-#### Phase 1: Foundation & Color (Complete)
-- **ASCII Renderer** – Convert images into ASCII art with adjustable resolution
-- **Colorized Output** – Full color support with multiple modes:
-  - **None** – Classic grayscale ASCII
-  - **16-color** – ANSI 16-color terminal support
-  - **256-color** – Extended ANSI 256-color palette
-  - **Truecolor** – 24-bit RGB color (16.7 million colors)
-- **RGB Image Support** – Full color image processing with separate channel handling
-- **Dark/Light Mode** – Optimized for both dark and light terminal backgrounds
-- **Professional CLI** – Modern argument parsing with long and short options
-- **File Output** – Save ASCII art to text files
-- **Error Handling** – Comprehensive error checking and memory management
-- **Build System** – Complete Makefile with install/uninstall targets
+### Core Capabilities
 
-#### Phase 2: Image Filtering (In Progress)
-- **Kernel-Based Convolution** – Apply convolution operations to images
-- **Gaussian Blur Filter** – Smooth images with configurable kernel size and sigma
-- **Sharpen Filter** – Enhance edges and details in images
-- **Sobel Edge Detection** – Gradient magnitude edge detection
-- **Prewitt Edge Detection** – Gradient-based edge detection
-- **Roberts Cross Edge Detection** – Diagonal edge detection
-- **Laplacian Edge Detection** – Omnidirectional edge detection
-- **Filter Integration** – Seamlessly apply filters before ASCII conversion
+* **ASCII Renderer:** Brightness-based mapping with color output (16, 256, truecolor).
+* **Image Filtering:** Kernel-based convolution with multiple filters.
+* **Transforms:** DFT, DCT, and DWT for frequency-domain analysis.
+* **Compression:** Implementations of Huffman, LZW, and JPEG.
+* **Video Basics:** Frame extraction, temporal filtering, and motion modeling.
 
-#### Unit 1: Fundamentals of Image Processing
-- **Sampling and Quantization** – Demonstrate aliasing, resolution effects
-- **Basic Pixel Relationships** – Neighbors, connectivity, distance measures
-- **2D Discrete Fourier Transform (DFT)** – Frequency domain visualization
-- **Discrete Cosine Transform (DCT)** – JPEG foundation
-- **Discrete Wavelet Transform (DWT)** – Multi-resolution analysis
+### CLI and Build
 
-#### Unit 2: Image Processing Techniques
-
-**Spatial Domain Enhancement:**
-- **Histogram Processing** – Equalization, matching, specification
-- **Spatial Filtering Fundamentals** – Convolution, correlation
-- **Smoothing Filters** – Mean, Gaussian, median, bilateral
-- **Sharpening Filters** – Laplacian, unsharp masking, high-boost
-
-**Frequency Domain Enhancement:**
-- **Frequency Domain Filtering** – Ideal, Butterworth, Gaussian filters
-- **Image Smoothing** – Low-pass filtering
-- **Image Sharpening** – High-pass filtering, high-frequency emphasis
-- **Selective Filtering** – Band-pass, band-reject, notch filters
-
-**Image Segmentation:**
-- **Point Detection** – Isolated point detection
-- **Line Detection** – Horizontal, vertical, diagonal lines
-- **Edge Detection** – Prewitt, Roberts, Canny, Marr-Hildreth
-- **Thresholding** – Global, adaptive, Otsu's method
-- **Region-Based Segmentation** – Region growing, split-and-merge
-
-#### Unit 3: Image Compression
-
-**Compression Fundamentals:**
-- **Coding Redundancy** – Variable-length coding
-- **Spatial Redundancy** – Interpixel correlation
-- **Temporal Redundancy** – Frame-to-frame correlation
-
-**Compression Techniques:**
-- **Huffman Coding** – Optimal prefix codes
-- **Arithmetic Coding** – Fractional bit encoding
-- **LZW Coding** – Dictionary-based compression
-- **Run-Length Encoding** – Sequential data compression
-- **Bit-Plane Coding** – Bit-level compression
-- **Transform Coding** – DCT-based compression
-- **Predictive Coding** – DPCM, delta modulation
-- **Wavelet Coding** – Multi-resolution compression
-- **JPEG Standard** – Complete JPEG encoder/decoder
-
-#### Unit 4: Video Processing Fundamentals
-
-**Video Basics:**
-- **Analog vs Digital Video** – Conversion and representation
-- **Time-Varying Image Formation** – 3D motion models
-- **Geometric Image Formation** – Camera models, projection
-- **Photometric Image Formation** – Lighting, shading, reflectance
-- **Video Signal Sampling** – Temporal and spatial sampling
-- **Video Filtering Operations** – Temporal filtering, noise reduction
-
-#### Unit 5: Motion Estimation & Video Coding
-
-**Motion Estimation:**
-- **Optical Flow** – Dense motion field estimation
-- **Pixel-Based Motion Estimation** – Differential methods
-- **Block Matching Algorithm** – Full search, fast algorithms (TSS, 3SS, DS)
-- **Mesh-Based Motion Estimation** – Triangular mesh warping
-- **Global Motion Estimation** – Camera motion, affine models
-- **Region-Based Motion Estimation** – Object-level motion
-- **Multi-Resolution Motion Estimation** – Hierarchical approaches
-
-**Video Coding:**
-- **Waveform-Based Coding** – PCM, DPCM
-- **Block-Based Transform Coding** – DCT for video
-- **Predictive Coding** – Inter-frame prediction, motion compensation
-- **Motion Estimation in Video Coding** – H.264/AVC, HEVC concepts
+* Modern command-line interface using `getopt`.
+* Comprehensive error handling and memory safety.
+* Modular Makefile with `install`, `uninstall`, and `test` targets.
 
 ---
 
 ## Installation
-
-### From Source
 
 ```bash
 git clone https://github.com/pro-utkarshM/termiview.git
@@ -124,76 +72,75 @@ make
 sudo make install
 ```
 
-### Dependencies
+**Dependencies**
 
-* **GCC / Clang** – C compiler
-* **stb_image.h** – Image loading (included)
-* **FFTW** – For Fourier transforms
-
----
-
-For detailed usage instructions and examples, please refer to [USAGE.md](USAGE.md).
+* `gcc` or `clang` — compiler
+* `stb_image.h` — image loader (included)
+* `fftw` — for Fourier transforms
 
 ---
 
 ## Development
 
-### Building
-
-**Release build (optimized):**
 ```bash
-make
-```
-
-**Debug build:**
-```bash
-make debug
-```
-
-**Run tests:**
-```bash
-make test
-```
-
-**Clean build artifacts:**
-```bash
-make clean
-```
-
-### Project Structure
-
-```
-termiView/
-├── Makefile                    # Build system
-├── README.md                   # Documentation
-├── assets/                     # Sample images
-│   ├── dragon_warrior.jpeg
-│   └── kitty.jpeg
-├── include/                    # Header files
-│   ├── color_output.h          # Color rendering functions
-│   ├── filters.h               # Filter and convolution functions
-│   ├── image_processing.h      # Image processing functions
-│   └── stb_image.h             # Image loading library
-└── src/                        # Source code
-    ├── color_output.c          # ANSI color implementation
-    ├── filters.c               # Convolution and filter implementation
-    ├── image_processing.c      # Image processing implementation
-    └── main.c                  # CLI and main logic
+make           # Build release version
+make debug     # Build with debug flags
+make test      # Run tests
+make clean     # Clean build artifacts
 ```
 
 ---
 
+## Roadmap
 
-> For the goals of this project, please refer to [GOALS.md](GOALS.md)
+### Foundation
 
-> For the detailed project roadmap, please refer to [TODO.md](TODO.md).
+* [x] ASCII renderer with brightness mapping
+* [x] Colorized terminal support (16, 256, Truecolor)
+* [x] RGB image processing and CLI integration
+* [x] Kernel-based filtering (blur, sharpen, edge detection)
+* [x] Convolution engine and Makefile system
 
-> For detailed version history, please refer to [VERSION.md](VERSION.md).
+### Fundamentals
+
+* [x] Sampling and quantization demonstrations
+* [x] Pixel relationship operations
+* [x] 2D DFT, DCT, and DWT implementations
+
+### Processing Techniques
+
+* [x] Histogram equalization and processing
+* [x] Complete spatial and frequency-domain filtering
+* [x] Edge detection (Prewitt, Roberts, Canny)
+* [x] Thresholding (Otsu, adaptive)
+* [x] Region-based segmentation
+
+### Compression
+
+* [x] Huffman, Arithmetic, LZW, and Run-length encoding
+* [x] Transform coding (DCT-based)
+* [x] JPEG encoder/decoder
+* [x] Wavelet-based compression
+
+### Video Processing
+
+* [x] Video file I/O and frame extraction
+* [x] Temporal filtering and motion models
+* [x] Video sampling demonstrations
+
+### Motion & Video Coding
+
+* [x] Optical flow computation
+* [ ] Block matching algorithms
+* [ ] Motion estimation and predictive coding
+* [ ] Motion-compensated video compression
 
 ---
+
 ## Contributing
 
-Contributions are welcome! If you're learning signal processing or graphics programming, this is a great place to experiment and contribute.
+Contributions are welcome.
+If you’re exploring **image processing**, **signal processing**, or **graphics programming**, TermiView provides a clean foundation to learn and contribute.
 
 ```bash
 git checkout -b feature/your-feature
@@ -206,5 +153,6 @@ git push origin feature/your-feature
 ## Author
 
 Created by [pro-utkarshM](https://github.com/pro-utkarshM)
+“See the world in ASCII — one character at a time.”
 
-**TermiView** - See the world in ASCII, one character at a time. 🎨
+---
