@@ -27,3 +27,10 @@ output/
 *.so
 *.a
 *.dylib
+
+# Test binaries
+/tests/compression_test
+/tests/filters_test
+/tests/frequency_test
+/tests/image_processing_test
+/tests/video_processing_test

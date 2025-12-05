@@ -1,37 +1,42 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -Wno-unused-parameter -std=c99 -Iinclude
-CFLAGS_DEBUG = $(CFLAGS) -g -DDEBUG
-CFLAGS_RELEASE = $(CFLAGS) -O2
-FFTW_LIBS = $(shell pkg-config --libs fftw3)
-LDFLAGS = -lm $(FFTW_LIBS) -lavformat -lavcodec -lswscale -lavutil
+CC              = gcc
+SRCDIR          = src
+INCDIR          = include
+PREFIX         ?= /usr/local
+BINDIR          = $(PREFIX)/bin
+MANDIR          = $(PREFIX)/share/man/man1
 
-SRCDIR = src
-INCDIR = include
-SOURCES = $(wildcard $(SRCDIR)/*.c)
-OBJECTS = $(SOURCES:.c=.o) src/video_processing.o
-TARGET = termiView
-TARGET_DEBUG = termiView-debug
+# Base C flags
+CFLAGS_BASE     = -Wall -Wextra -Wno-unused-parameter -std=c99 -I$(INCDIR)
+CFLAGS_DEBUG    = $(CFLAGS_BASE) -g -DDEBUG
+CFLAGS_RELEASE  = $(CFLAGS_BASE) -O2
 
-PREFIX ?= /usr/local
-BINDIR = $(PREFIX)/bin
-MANDIR = $(PREFIX)/share/man/man1
+# Libraries
+FFTW_LIBS       = $(shell pkg-config --libs fftw3)
+LDFLAGS         = -lm $(FFTW_LIBS) -lavformat -lavcodec -lswscale -lavutil
+
+# Sources / objects
+SOURCES         = $(wildcard $(SRCDIR)/*.c)
+OBJECTS         = $(SOURCES:.c=.o)
+
+TARGET          = termiView
+TARGET_DEBUG    = termiView-debug
 
 # Default target: release build
 all: $(TARGET)
 
 # Release build
-$(TARGET): CFLAGS := $(CFLAGS_RELEASE)
+$(TARGET): CFLAGS = $(CFLAGS_RELEASE)
 $(TARGET): $(OBJECTS)
 	$(CC) $(OBJECTS) -o $(TARGET) $(LDFLAGS)
 
 # Debug build
-debug: CFLAGS := $(CFLAGS_DEBUG)
+debug: CFLAGS = $(CFLAGS_DEBUG)
 debug: clean $(TARGET_DEBUG)
 
 $(TARGET_DEBUG): $(OBJECTS)
 	$(CC) $(OBJECTS) -o $(TARGET_DEBUG) $(LDFLAGS)
 
-# Compile object files
+# Generic compile rule
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -51,13 +56,16 @@ uninstall:
 
 # Clean build artifacts
 clean:
-	rm -f $(SRCDIR)/*.o $(TARGET) $(TARGET_DEBUG) tests/image_processing_test tests/frequency_test tests/filters_test tests/compression_test
+	rm -f $(SRCDIR)/*.o $(TARGET) $(TARGET_DEBUG) \
+	      tests/image_processing_test tests/frequency_test \
+	      tests/filters_test tests/compression_test tests/video_processing_test
 
 # Clean everything including output files
 distclean: clean
 	rm -f *.txt
 
-# Run tests
+# ---- Tests ----
+
 test: test_image_processing test_frequency test_filters test_compression test_video_processing
 	@echo "Running basic integration tests..."
 	@./$(TARGET) --version
@@ -65,24 +73,35 @@ test: test_image_processing test_frequency test_filters test_compression test_vi
 	@./$(TARGET) assets/kitty.jpeg -w 40 -h 20 -o test_output.txt
 	@echo "Integration tests passed!"
 
-test_image_processing: src/image_processing.o
-	$(CC) $(CFLAGS) -Itests tests/image_processing_test.c src/image_processing.o -o tests/image_processing_test $(LDFLAGS)
+test_image_processing: $(SRCDIR)/image_processing.o
+	$(CC) $(CFLAGS_BASE) -Itests tests/image_processing_test.c \
+	      $(SRCDIR)/image_processing.o -o tests/image_processing_test $(LDFLAGS)
 	@./tests/image_processing_test
 
-test_frequency: src/frequency.o src/image_processing.o
-	$(CC) $(CFLAGS) -Itests tests/frequency_test.c src/frequency.o src/image_processing.o -o tests/frequency_test $(LDFLAGS)
+test_frequency: $(SRCDIR)/frequency.o $(SRCDIR)/image_processing.o
+	$(CC) $(CFLAGS_BASE) -Itests tests/frequency_test.c \
+	      $(SRCDIR)/frequency.o $(SRCDIR)/image_processing.o \
+	      -o tests/frequency_test $(LDFLAGS)
 	@./tests/frequency_test
 
-test_filters: src/filters.o src/image_processing.o
-	$(CC) $(CFLAGS) -Itests tests/filters_test.c src/filters.o src/image_processing.o -o tests/filters_test $(LDFLAGS)
+test_filters: $(SRCDIR)/filters.o $(SRCDIR)/image_processing.o
+	$(CC) $(CFLAGS_BASE) -Itests tests/filters_test.c \
+	      $(SRCDIR)/filters.o $(SRCDIR)/image_processing.o \
+	      -o tests/filters_test $(LDFLAGS)
 	@./tests/filters_test
 
-test_compression: src/compression.o src/image_processing.o
-	$(CC) $(CFLAGS) -Itests tests/compression_test.c src/compression.o src/image_processing.o -o tests/compression_test $(LDFLAGS)
+test_compression: $(SRCDIR)/compression.o $(SRCDIR)/image_processing.o
+	$(CC) $(CFLAGS_BASE) -Itests tests/compression_test.c \
+	      $(SRCDIR)/compression.o $(SRCDIR)/image_processing.o \
+	      -o tests/compression_test $(LDFLAGS)
 	@./tests/compression_test
 
-test_video_processing: src/video_processing.o src/image_processing.o
-	$(CC) $(CFLAGS) -Itests tests/video_processing_test.c src/video_processing.o src/image_processing.o -o tests/video_processing_test $(LDFLAGS)
+test_video_processing: $(SRCDIR)/video_processing.o $(SRCDIR)/image_processing.o
+	$(CC) $(CFLAGS_BASE) -Itests tests/video_processing_test.c \
+	      $(SRCDIR)/video_processing.o $(SRCDIR)/image_processing.o \
+	      -o tests/video_processing_test $(LDFLAGS)
 	@./tests/video_processing_test
 
-.PHONY: all debug install uninstall clean distclean test test_image_processing test_frequency test_filters test_compression test_video_processing
+.PHONY: all debug install uninstall clean distclean test \
+        test_image_processing test_frequency test_filters \
+        test_compression test_video_processing

@@ -1,6 +1,9 @@
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../include/stb_image.h"
 #include "../include/image_processing.h"
+#include "../include/stb_image_write.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -106,6 +109,27 @@ void free_grayscale_image(grayscale_image_t* image) {
         image->width = 0;
         image->height = 0;
     }
+}
+
+bool save_grayscale_image_to_png(const grayscale_image_t* image, const char* filename) {
+    if (image == NULL || image->data == NULL || filename == NULL) {
+        fprintf(stderr, "Error: Invalid arguments to save_grayscale_image_to_png\n");
+        return false;
+    }
+
+    int width  = (int)image->width;
+    int height = (int)image->height;
+
+    // 1 channel (grayscale): stride = width bytes per row
+    int stride_in_bytes = width;
+
+    int ok = stbi_write_png(filename, width, height, 1, image->data, stride_in_bytes);
+    if (!ok) {
+        fprintf(stderr, "Error: Failed to write PNG file '%s'\n", filename);
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -233,15 +257,17 @@ rgb_image_t make_resized_rgb(rgb_image_t* original, size_t max_width, size_t max
             }
         }
     } else { // INTERPOLATION_AVERAGE
-        for (size_t i = 0; i < width; i++) {
-            size_t x1 = (i * original->width) / (width);
-            size_t x2 = ((i + 1) * original->width) / (width);
-            for (size_t j = 0; j < height; j++) {
-                size_t y1 = (j * original->height) / (height);
-                size_t y2 = ((j + 1) * original->height) / (height);
+        for (size_t j = 0; j < height; j++) {
+            size_t y1 = (j * original->height) / height;
+            size_t y2 = ((j + 1) * original->height) / height;
+
+            for (size_t i = 0; i < width; i++) {
+                size_t x1 = (i * original->width) / width;
+                size_t x2 = ((i + 1) * original->width) / width;
 
                 rgb_pixel_t avg = get_average_rgb(original, x1, x2, y1, y2);
                 size_t idx = i + j * width;
+
                 r_data[idx] = avg.r;
                 g_data[idx] = avg.g;
                 b_data[idx] = avg.b;
@@ -749,20 +775,3 @@ grayscale_image_t apply_adaptive_thresholding(const grayscale_image_t* image, in
 
     return result;
 }
-
-bool save_grayscale_image_to_png(const grayscale_image_t* image, const char* filename) {
-    if (image == NULL || image->data == NULL || filename == NULL) {
-        fprintf(stderr, "Error: Invalid input to save_grayscale_image_to_png\n");
-        return false;
-    }
-
-    // stbi_write_png parameters: filename, width, height, components (1 for grayscale), data, stride_in_bytes
-    int success = stbi_write_png(filename, (int)image->width, (int)image->height, 1, image->data, (int)image->width);
-    
-    if (success == 0) {
-        fprintf(stderr, "Error: Failed to write PNG image to '%s'\n", filename);
-        return false;
-    }
-    return true;
-}
-

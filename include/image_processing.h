@@ -3,9 +3,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "../include/stb_image_write.h"
-
 typedef struct {
     size_t width;
     size_t height;
@@ -56,7 +53,6 @@ grayscale_image_t apply_adaptive_thresholding(const grayscale_image_t* image, in
 
 grayscale_image_t apply_region_growing(const grayscale_image_t* image, int seed_x, int seed_y, int threshold);
 
-// Function to save a grayscale image to a PNG file
 bool save_grayscale_image_to_png(const grayscale_image_t* image, const char* filename);
 
 #endif

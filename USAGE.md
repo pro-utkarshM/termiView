@@ -5,7 +5,7 @@
 Convert and view an image as colorized ASCII:
 
 ```bash
-termiView image.jpg
+termiView assets/kitty.jpeg
 ```
 
 ### Advanced Options
@@ -53,7 +53,7 @@ Options:
 
 **Truecolor output with custom dimensions:**
 ```bash
-termiView -w 80 -h 60 --color truecolor image.png
+termiView -w 80 -h 60 --color truecolor assets/kitty.jpeg
 ```
 
 **256-color mode for wider terminal compatibility:**
@@ -63,47 +63,47 @@ termiView --color 256 photo.jpeg
 
 **Light mode for light terminal backgrounds:**
 ```bash
-termiView --light --color 16 image.jpg
+termiView --light --color 16 assets/kitty.jpeg
 ```
 
 **Save to file:**
 ```bash
-termiView -c truecolor -o output.txt image.jpg
+termiView -c truecolor -o output.txt assets/kitty.jpeg
 ```
 
 **Classic grayscale ASCII:**
 ```bash
-termiView --color none image.png
+termiView --color none assets/kitty.jpeg
 ```
 
 **Apply Gaussian blur filter:**
 ```bash
-termiView --filter blur image.jpg
+termiView --filter blur assets/kitty.jpeg
 ```
 
 **Sharpen image before ASCII conversion:**
 ```bash
-termiView -f sharpen --color 256 photo.png
+termiView -f sharpen --color 256 assets/kitty.jpeg
 ```
 
 **Edge detection with Sobel operator:**
 ```bash
-termiView --filter sobel image.jpg -w 80 -h 60
+termiView --filter sobel assets/kitty.jpeg -w 80 -h 60
 ```
 
 **Edge detection with Prewitt operator:**
 ```bash
-termiView --filter prewitt image.jpg -w 80 -h 60
+termiView --filter prewitt assets/kitty.jpeg -w 80 -h 60
 ```
 
 **Edge detection with Roberts Cross operator:**
 ```bash
-termiView --filter roberts image.jpg -w 80 -h 60
+termiView --filter roberts assets/kitty.jpeg -w 80 -h 60
 ```
 
 **Apply salt-and-pepper noise:**
 ```bash
-termiView --filter salt-pepper --noise 0.1 image.jpg
+termiView --filter salt-pepper --noise 0.1 assets/kitty.jpeg
 ```
 
 **Compress a file using LZW:**
@@ -128,7 +128,7 @@ termiView --decompress rle input.rle -o output.bin
 
 **Compress an image using DCT-based compression:**
 ```bash
-termiView --compress dct_based input.png -o output.dct
+termiView --compress dct_based assets/kitty.jpeg -o output.dct
 ```
 
 **Decompress an image using DCT-based compression:**
@@ -138,7 +138,7 @@ termiView --decompress dct_based input.dct -o output.png
 
 **Compress an image using Wavelet compression:**
 ```bash
-termiView --compress wavelet --wavelet-levels 2 input.png -o output.wlt
+termiView --compress wavelet --wavelet-levels 2 assets/kitty.jpeg -o output.wlt
 ```
 
 **Decompress an image using Wavelet compression:**
@@ -183,30 +183,30 @@ termiView --video input.mp4 --fps 15
 
 **Compute the 2D DCT of an image:**
 ```bash
-termiView --dct image.jpg
+termiView --dct assets/kitty.jpeg
 ```
 
 **Compute the 2D DWT of an image:**
 ```bash
-termiView --dwt image.jpg
+termiView --dwt assets/kitty.jpeg
 ```
 
 **Quantize a grayscale image:**
 ```bash
-termiView --quantize 8 image.jpg
+termiView --quantize 8 assets/kitty.jpeg
 ```
 
 **Apply histogram equalization:**
 ```bash
-termiView --equalize image.jpg
+termiView --equalize assets/kitty.jpeg
 ```
 
 **Apply a Gaussian low-pass filter:**
 ```bash
-termiView --filter gaussian-lowpass --cutoff 15 image.jpg
+termiView --filter gaussian-lowpass --cutoff 15 assets/kitty.jpeg
 ```
 
 **Laplacian edge detection in grayscale:**
 ```bash
-termiView -f laplacian --color none image.png
+termiView -f laplacian --color none assets/kitty.jpeg
 ```
